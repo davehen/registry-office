@@ -128,7 +128,17 @@ public class CivilRegistryController {
         return ResponseEntity.ok(deleted.get());
     }
 
-    // 10) DELETE /person: delete all
+    // 10) DELETE /person/email/{email}
+    @DeleteMapping("/email/{email:.+}")
+    public ResponseEntity<?> deleteByEmail(@PathVariable String email) {
+        Optional<Person> deleted = service.deleteByEmail(email);
+        if (deleted.isEmpty()) {
+            return notFound("Person with email '%s' not found".formatted(email));
+        }
+        return ResponseEntity.ok(deleted.get());
+    }
+
+    // 11) DELETE /person: delete all
     @DeleteMapping
     public ResponseEntity<List<Person>> deleteAll() {
         List<Person> deleted = service.deleteAll();
