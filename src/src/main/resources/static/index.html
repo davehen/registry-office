@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civil Registry Office</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏛️ Civil Registry Office</h1>
+            <div class="actions-bar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search persons...">
+                    <button onclick="searchPersons()">Search</button>
+                </div>
+                <button class="btn-primary" onclick="openModal('personModal')">Add New Person</button>
+                <button class="btn-danger" onclick="openModal('deleteEmailModal')">Delete by Email</button>
+                <button class="btn-danger" onclick="deleteAllPersons()">Delete All</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="card">
+                <h2>Registered Persons</h2>
+                <div class="table-container">
+                    <table id="personTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Email</th>
+                                <th>Birth Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Person Modal -->
+        <div id="personModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('personModal')">&times;</span>
+                <h2 id="modalTitle">Add New Person</h2>
+                <form id="personForm">
+                    <input type="hidden" id="personId">
+                    <div class="form-group">
+                        <label for="userName">Username</label>
+                        <input type="text" id="userName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="birthDate">Birth Date</label>
+                        <input type="date" id="birthDate" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Save Person</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete by Email Modal -->
+        <div id="deleteEmailModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('deleteEmailModal')">&times;</span>
+                <h2>Delete by Email</h2>
+                <p>Enter the email of the person you wish to remove from the registry.</p>
+                <div class="form-group">
+                    <label for="deleteEmail">Email Address</label>
+                    <input type="email" id="deleteEmail">
+                </div>
+                <button class="btn-danger" onclick="deleteByEmail()">Delete Person</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2026 Civil Registry Office. All rights reserved.</p>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
