@@ -20,6 +20,7 @@ public class Person {
     private String email;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthDate;
+    private String nationality;
 
     protected Person() {
     }
@@ -34,6 +35,7 @@ public class Person {
 
     public Person(Person other) {
         this(other.getUserName(), other.getFirstName(), other.getLastName(), other.getEmail(), other.getBirthDate());
+        setNationality(other.getNationality());
     }
 
     public int getId() {
@@ -80,6 +82,14 @@ public class Person {
 
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
     }
 
     @Override

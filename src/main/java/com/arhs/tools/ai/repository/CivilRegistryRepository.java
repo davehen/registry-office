@@ -15,6 +15,8 @@ public interface CivilRegistryRepository extends CrudRepository<Person, Integer>
 
     Optional<Person> findByEmail(String email);
 
+    List<Person> findByNationalityIgnoreCase(String nationality);
+
     void deleteByEmail(String email);
 
     @Query("SELECT p FROM Person p WHERE " +

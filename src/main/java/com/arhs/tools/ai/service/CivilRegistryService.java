@@ -16,6 +16,8 @@ public interface CivilRegistryService {
 
     List<Person> findAll();
 
+    List<Person> findByNationality(String nationality);
+
     List<Person> search(final String inputText);
 
     List<Person> search(final String inputText, final Integer ageFrom, final Integer ageTo);

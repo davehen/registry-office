@@ -6,6 +6,9 @@ import com.arhs.tools.ai.repository.CivilRegistryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -88,7 +91,9 @@ class CivilRegistryServiceTest {
 
     @Test
     void update_ExistingPerson_ShouldUpdateAndReturn() throws DuplicatePropertyException {
+        samplePerson.setNationality("French");
         Person updatedDetails = new Person("newuser", "New", "Name", "new@example.com", LocalDate.now().minusYears(20));
+        updatedDetails.setNationality("German");
         updatedDetails.setId(1);
 
         when(repository.findById(1)).thenReturn(Optional.of(samplePerson));
@@ -101,6 +106,7 @@ class CivilRegistryServiceTest {
         assertTrue(result.isPresent());
         assertEquals("newuser", samplePerson.getUserName());
         assertEquals("New", samplePerson.getFirstName());
+        assertEquals("German", samplePerson.getNationality());
         verify(repository).save(samplePerson);
     }
 
@@ -158,5 +164,27 @@ class CivilRegistryServiceTest {
 
         assertEquals(1, result.size());
         verify(repository).deleteAll();
+    }
+
+    @Test
+    void nationalitySearch_TrimsInputAndPropagatesResults() {
+        when(repository.findByNationalityIgnoreCase("french")).thenReturn(List.of(samplePerson));
+        assertEquals(List.of(samplePerson), service.findByNationality(" french "));
+        verify(repository).findByNationalityIgnoreCase("french");
+    }
+
+    @Test
+    void nationalitySearch_ReturnsEmptyList() {
+        when(repository.findByNationalityIgnoreCase("Spanish")).thenReturn(List.of());
+        assertTrue(service.findByNationality("Spanish").isEmpty());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t\n"})
+    void nationalitySearch_RejectsUnusableInput(String input) {
+        var exception = assertThrows(IllegalArgumentException.class, () -> service.findByNationality(input));
+        assertEquals("Nationality must not be blank", exception.getMessage());
+        verifyNoInteractions(repository);
     }
 }

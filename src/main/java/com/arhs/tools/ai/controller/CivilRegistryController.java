@@ -72,7 +72,22 @@ public class CivilRegistryController {
         return ResponseEntity.ok(persons);
     }
 
-    // 6) POST /person: create new person
+    // GET /person/nationality/{nationality}: exact, case-insensitive search
+    @GetMapping("/nationality/{nationality}")
+    public ResponseEntity<?> getByNationality(@PathVariable String nationality) {
+        try {
+            return ResponseEntity.ok(service.findByNationality(nationality));
+        } catch (IllegalArgumentException e) {
+            return badRequest(e.getMessage());
+        }
+    }
+
+    @GetMapping({"/nationality", "/nationality/"})
+    public ResponseEntity<?> getByMissingNationality() {
+        return badRequest("Nationality must not be blank");
+    }
+
+    // POST /person: create new person
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> create(@RequestBody Person person) {
         try {
