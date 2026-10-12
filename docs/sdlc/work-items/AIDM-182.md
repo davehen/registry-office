@@ -1,6 +1,6 @@
 # Nationality search intake and technical plan
 
-This work item adds optional nationality data and a dedicated REST search while preserving existing API behaviour. Requirements and the technical plan are approved. Implementation and local verification are complete; independent review and PR CI remain pending.
+This work item adds optional nationality data and a dedicated REST search while preserving existing API behaviour. Requirements and the technical plan are approved. Implementation, local verification and independent review are complete; PR CI and human merge remain pending.
 
 ## 1. Identity and traceability
 
@@ -136,10 +136,10 @@ Local clean verify is reported successful and all 80 tests pass in the inspected
 - [x] Questions resolved or explicitly deferred; technical choices stated for review.
 - [x] Human gives the implementation go-ahead for this plan.
 - [x] Feature branch created; process infrastructure changes excluded from feature staging.
-- [x] Implementation and tests cover acceptance criteria; independent assessment pending.
+- [x] Implementation and tests cover acceptance criteria; independent assessment completed.
 - [x] Local verification evidence recorded.
 - [ ] GitHub Actions Quality gate green on the PR commit.
-- [ ] Independent review recorded by a human or independent Codex session.
+- [x] Independent review recorded by a separately authorized Codex agent in docs/sdlc/reviews/AIDM-182.md; no actionable findings.
 - [ ] Human approves merge.
 
 Merge, release and Jira writes remain subject to explicit human authorization. At delivery, record intake, first implementation commit, PR and merge timestamps, test results, review findings, human interventions and available AI usage metrics.
