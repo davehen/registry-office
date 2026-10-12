@@ -25,13 +25,27 @@ class SdlcAutopilot
   ALLOWED = %r{\A(?:src/|docs/sdlc/|dev_scripts/ui_tests/|pom\.xml\z|README\.md\z|\.gitignore\z|\.github/workflows/quality-gate\.yml\z)}
 
   def initialize
-    raise 'This authorization covers AIDM-184 only.' unless ARGV == [ISSUE]
+    valid_arguments = ARGV == [ISSUE] || (ARGV.length == 3 && ARGV[0] == ISSUE && ARGV[1] == '--resume')
+    raise 'Usage: ruby dev_scripts/sdlc-autopilot.rb AIDM-184 [--resume PRIVATE_RUN_DIRECTORY]' unless valid_arguments
     @root = File.expand_path('..', __dir__)
-    @run = Dir.mktmpdir('registry-office-sdlc-', '/private/tmp')
-    File.chmod(0700, @run)
-    @state = { 'issue' => ISSUE, 'started_at' => Time.now.utc.iso8601,
-               'run_directory' => @run, 'phase' => 'preflight' }
-    @serial = 0
+    @resume = ARGV.length == 3
+    if @resume
+      @run = File.realpath(ARGV[2])
+      stat = File.lstat(@run)
+      raise 'Unsafe resume directory.' unless @run.match?(%r{\A/private/tmp/registry-office-sdlc-[^/]+\z}) && stat.directory? && stat.uid == Process.uid && (stat.mode & 0777) == 0700
+      @state = JSON.parse(File.read(File.join(@run, 'state.json')))
+      raise 'Run identity mismatch or already complete.' unless @state['issue'] == ISSUE && @state['run_directory'] == @run && @state['phase'] != 'complete'
+      @state['previous_errors'] ||= []
+      @state['previous_errors'] << @state.delete('error') if @state['error']
+      @state['resumed_at'] = Time.now.utc.iso8601
+      @serial = Dir.children(@run).map { |name| name[/\A(\d+)-/, 1]&.to_i }.compact.max || 0
+    else
+      @run = Dir.mktmpdir('registry-office-sdlc-', '/private/tmp')
+      File.chmod(0700, @run)
+      @state = { 'issue' => ISSUE, 'started_at' => Time.now.utc.iso8601,
+                 'run_directory' => @run, 'phase' => 'preflight' }
+      @serial = 0
+    end
     runtime = File.join(Dir.home, '.cache/codex-runtimes/codex-primary-runtime/dependencies')
     ENV['PATH'] = [File.join(runtime, 'node/bin'), File.join(runtime, 'bin/fallback'), ENV['PATH']].join(File::PATH_SEPARATOR)
   end
@@ -112,14 +126,17 @@ class SdlcAutopilot
       'required' => properties.keys, 'properties' => properties }
   end
 
+  def codex_arguments(writable, schema_file, result_file)
+    ['codex', 'exec', '--ephemeral', '--sandbox', writable ? 'workspace-write' : 'read-only',
+     '--output-schema', schema_file, '--output-last-message', result_file, '-']
+  end
+
   def agent(role, prompt, schema, writable: false)
     schema_file = File.join(@run, "#{role}-schema.json")
     result_file = File.join(@run, "#{role}-result.json")
     File.write(schema_file, JSON.generate(schema), mode: 'w', perm: 0600)
     before = git('rev-parse', 'HEAD')
-    args = ['codex', 'exec', '--ephemeral', '--sandbox', writable ? 'workspace-write' : 'read-only',
-            '--output-schema', schema_file, '--output-last-message', result_file, '-']
-    args.insert(2, '--approve-for-me') if writable
+    args = codex_arguments(writable, schema_file, result_file)
     command(*args, timeout: 2400, input: prompt, discard_output: true)
     raise 'Agent changed the commit without authorization.' unless git('rev-parse', 'HEAD') == before
     data = JSON.parse(File.read(result_file))
@@ -205,7 +222,8 @@ class SdlcAutopilot
     @lock = File.open(File.expand_path('sdlc-autopilot.lock', File.expand_path(common, @root)), 'w', 0600)
     raise 'Another autopilot is running.' unless @lock.flock(File::LOCK_EX | File::LOCK_NB)
     @request_file = File.join(@run, 'jira-request.json')
-    @description_hash = jira_snapshot(@request_file)
+    @description_hash = jira_snapshot(@resume ? File.join(@run, 'jira-resume-check.json') : @request_file)
+    raise 'Jira requirements changed since the saved plan; resume stopped.' if @resume && @state['description_sha256'] != @description_hash
     @state['description_sha256'] = @description_hash
   end
 
@@ -234,6 +252,10 @@ class SdlcAutopilot
     @branch = "codex/aidm-184-autopilot-#{Time.now.utc.strftime('%Y%m%d%H%M%S')}"
     git('switch', '-c', @branch)
     @base = git('rev-parse', 'origin/main')
+    @state['base_commit'] = @base
+    @state['branch'] = @branch
+    @state['worktree'] = @work
+    save_state
     @plan_file = File.join(@run, 'plan.json')
     plan_schema = json_schema({
       'status' => { 'type' => 'string', 'enum' => %w[ready blocked] },
@@ -255,6 +277,31 @@ class SdlcAutopilot
     develop('Implement the approved plan in full, including acceptance tests and a sanitized intake artifact from the repository template. Use existing frameworks and keep all backend/UI compatibility required by Jira.')
   end
 
+  def resume_implementation
+    phase('resume the preserved plan and feature checkout')
+    @work = File.join(@run, 'worktree')
+    @plan_file = File.join(@run, 'plan.json')
+    raise 'No preserved plan/worktree; cannot resume this phase.' unless File.directory?(@work) && File.file?(@plan_file)
+    @branch = git('branch', '--show-current')
+    raise 'Unexpected preserved feature branch.' unless @branch.start_with?('codex/aidm-184-autopilot-')
+    plan = JSON.parse(File.read(@plan_file))
+    raise 'Saved plan is not ready.' unless plan['status'] == 'ready' && plan['blockers'].empty?
+    @base = @state['base_commit'] || git('merge-base', 'HEAD', 'origin/main')
+    validate_changes
+    # Incorporate only the authorized runner/bridge fixes from local main. This
+    # keeps the eventual merge a fast-forward for the user's main checkout.
+    root_head = git('rev-parse', 'main', cwd: @root)
+    ahead_paths = git('diff', '--name-only', 'origin/main...main', cwd: @root).lines.map(&:strip)
+    raise 'Unrelated unpublished main changes prevent safe resume.' unless (ahead_paths - [SCRIPT] - LOCAL_BRIDGE_FILES).empty?
+    _, integrated = command('git', 'merge', '--no-edit', root_head, allow_failure: true)
+    raise 'Runner fix could not be integrated; checkout preserved.' unless integrated
+    @state['branch'] = @branch
+    @state['worktree'] = @work
+    @state['base_commit'] = @base
+    save_state
+    develop('Resume the approved plan in the preserved checkout. Keep existing valid work, complete implementation and acceptance tests, and create/update the sanitized intake artifact. The prior developer invocation failed before starting because of incompatible CLI flags; those flags are now fixed. Do not recreate the plan, bootstrap PR or branch.')
+  end
+
   def develop(task)
     phase('implement or repair')
     result = agent('developer', context + task, json_schema({
@@ -264,7 +311,8 @@ class SdlcAutopilot
     }), writable: true)
     raise 'Developer blocked; inspect the private developer-result.json.' unless result['status'] == 'implemented' && result['blockers'].empty?
     commit_changes("feat(#{ISSUE}): autonomous delivery iteration")
-    raise 'No feature change produced.' if git('rev-parse', 'HEAD') == @base
+    feature_delta = git('diff', '--name-only', @base, 'HEAD').lines.map(&:strip) - [SCRIPT] - LOCAL_BRIDGE_FILES
+    raise 'No feature change produced beyond runner/bridge maintenance.' if feature_delta.empty?
     @state['first_implementation_commit'] ||= git('rev-parse', 'HEAD')
     save_state
   end
@@ -524,9 +572,13 @@ class SdlcAutopilot
   def run
     puts "AIDM-184 one-off autonomous PoC; artifacts: #{@run}"
     preflight
-    ensure_main_script
-    plan_and_implement
-    publish_and_merge
+    if @resume
+      resume_implementation unless @state['merged']
+    else
+      ensure_main_script
+      plan_and_implement
+    end
+    publish_and_merge unless @state['merged']
     launch_main
   rescue StandardError, Interrupt => error
     @state['error'] = error.message
