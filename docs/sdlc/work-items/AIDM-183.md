@@ -1,6 +1,6 @@
 # Nationality user interface delivery
 
-The web interface completes nationality support with creation, editing, display and combined search. Requirements and the technical plan were approved by the human. Implementation and browser tests are prepared; executable verification and independent review remain pending.
+The web interface completes nationality support with creation, editing, display and combined search. Requirements and the technical plan were approved by the human. Implementation, browser verification and local Maven verification are complete; real-application smoke check, independent review and PR CI remain pending.
 
 ## 1. Identity and traceability
 
@@ -109,7 +109,7 @@ Browser suite: dev_scripts/ui_tests/tests/nationality.spec.cjs. Scenarios cover 
 
 Local static verification passed: JavaScript syntax checks, git diff --check, package/lock version consistency and dependency integrity matching the provided runtime's lockfile. The lockfile was assembled from those recorded resolutions without executing a package installer; actual frozen installation still requires verification.
 
-Browser verification passed in the human's terminal on commit `6ff565b`: all 17 scenarios are reported passing, and Codex directly inspected Playwright's `.last-run.json` with `status: passed` and an empty failedTests list. Successful dependency/browser setup is evidenced by the completed test execution. Maven verification, real-application smoke check and PR CI remain pending. Automatic approval review rejected running the cached Playwright dependency from Codex; the human or CI executes verification:
+Browser verification passed in the human's terminal on commit `6ff565b`: all 17 scenarios are reported passing, and Codex directly inspected Playwright's `.last-run.json` with `status: passed` and an empty failedTests list. Successful dependency/browser setup is evidenced by the completed test execution. The human also reports successful local Maven clean verify on this feature branch; Codex inspected six Surefire reports with 80 tests, zero failures/errors/skips, latest report 2026-10-12T13:32:17Z, and confirmed the packaged JAR exists. Full Maven lifecycle success remains human-reported. Real-application smoke check and PR CI remain pending. Automatic approval review rejected running the cached Playwright dependency from Codex; the human or CI executes verification:
 
 ```bash
 mvn --batch-mode --no-transfer-progress clean verify
@@ -121,7 +121,7 @@ pnpm test
 
 Use Node 24 and pnpm 11.25.0. Chromium tests use only the local static test server and synthetic API fixtures. Also perform a manual smoke check of the running Java application to confirm the visible UI and actual REST integration.
 
-First human browser execution: 16 of 17 tests passed. The keyboard-access test assumed a single Tab exits a native date input; that assumption is browser-dependent. The corrected test navigates backward from the adjacent Save button and types using the keyboard. The human reran the suite successfully, with the local report confirming no failures. No passing Maven or CI result is claimed for AIDM-183 yet. Previous AIDM-182 test results are not evidence for this changed feature.
+First human browser execution: 16 of 17 tests passed. The keyboard-access test assumed a single Tab exits a native date input; that assumption is browser-dependent. The corrected test navigates backward from the adjacent Save button and types using the keyboard. The human reran the suite successfully, with the local report confirming no failures. PR CI is not yet verified.
 
 ## 10. Delivery checklist
 
@@ -130,7 +130,7 @@ First human browser execution: 16 of 17 tests passed. The keyboard-access test a
 - [x] Dedicated feature branch and scoped implementation prepared.
 - [x] Browser tests map to acceptance criteria.
 - [x] Browser tests pass after dependency/browser setup; 17 scenarios reported passing, local success report inspected.
-- [ ] Maven clean verify passes for this feature.
+- [x] Maven clean verify reported passing on this feature branch; 80 passing Java tests directly verified in reports.
 - [ ] Manual UI smoke check against the real application recorded.
 - [ ] Independent review complete.
 - [ ] GitHub Java 17 and UI quality gate passes on PR head.
