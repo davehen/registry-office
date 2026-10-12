@@ -32,3 +32,23 @@ jobs:
 
       - name: Run Maven quality gate
         run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Set up Node for UI tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Set up pnpm
+        run: npm install --global pnpm@11.25.0 --ignore-scripts
+
+      - name: Install UI test dependencies
+        working-directory: dev_scripts/ui_tests
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Install Chromium for UI tests
+        working-directory: dev_scripts/ui_tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run UI quality gate
+        working-directory: dev_scripts/ui_tests
+        run: pnpm test

@@ -152,6 +152,7 @@ tr:hover {
 /* Modals */
 .modal {
     display: none;
+    overflow-y: auto;
     position: fixed;
     z-index: 1000;
     left: 0;

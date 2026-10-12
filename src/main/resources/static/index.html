@@ -12,7 +12,7 @@
             <h1>🏛️ Civil Registry Office</h1>
             <div class="actions-bar">
                 <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search persons...">
+                    <input type="text" id="searchInput" aria-label="Search persons" placeholder="Search persons or nationality...">
                     <button onclick="searchPersons()">Search</button>
                 </div>
                 <button class="btn-primary" onclick="openModal('personModal')">Add New Person</button>
@@ -24,6 +24,7 @@
         <main>
             <div class="card">
                 <h2>Registered Persons</h2>
+                <p id="searchStatus" role="status" aria-live="polite"></p>
                 <div class="table-container">
                     <table id="personTable">
                         <thead>
@@ -34,6 +35,7 @@
                                 <th>Last Name</th>
                                 <th>Email</th>
                                 <th>Birth Date</th>
+                                <th>Nationality</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -71,6 +73,10 @@
                     <div class="form-group">
                         <label for="birthDate">Birth Date</label>
                         <input type="date" id="birthDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nationality">Nationality</label>
+                        <input type="text" id="nationality">
                     </div>
                     <button type="submit" class="btn-primary">Save Person</button>
                 </form>
