@@ -55,6 +55,14 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
     }
 
     @Override
+    public List<Person> findByNationality(final String nationality) {
+        if (nationality == null || nationality.isBlank()) {
+            throw new IllegalArgumentException("Nationality must not be blank");
+        }
+        return civilRegistryRepository.findByNationalityIgnoreCase(nationality.trim());
+    }
+
+    @Override
     public List<Person> search(final String inputText, final Integer ageFrom, final Integer ageTo) {
         String myInputText = inputText == null ? "" : inputText;
         List<Person> persons = new ArrayList<>(civilRegistryRepository.searchByText(myInputText));
@@ -113,6 +121,7 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
         foundPerson.get().setLastName(person.getLastName());
         foundPerson.get().setEmail(person.getEmail());
         foundPerson.get().setBirthDate(person.getBirthDate());
+        foundPerson.get().setNationality(person.getNationality());
         return Optional.of(civilRegistryRepository.save(foundPerson.get()));
     }
 

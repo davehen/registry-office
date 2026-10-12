@@ -167,4 +167,11 @@ class CivilRegistryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1));
     }
+
+    @Test
+    void generalSearch_NoResults_RemainsNotFound() throws Exception {
+        when(service.search("missing")).thenReturn(List.of());
+        mockMvc.perform(get("/person/search/missing"))
+                .andExpect(status().isNotFound());
+    }
 }
