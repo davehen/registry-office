@@ -33,6 +33,7 @@ JIRA_TOKEN="$(security find-generic-password -a "jira-api-token" -s "$KEYCHAIN_S
 trap 'unset JIRA_EMAIL JIRA_TOKEN' EXIT
 
 curl --fail --silent --show-error \
+  --connect-timeout 10 --max-time 30 \
   --user "$JIRA_EMAIL:$JIRA_TOKEN" \
   --get \
   --data-urlencode "fields=$FIELDS" \
