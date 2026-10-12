@@ -109,7 +109,7 @@ Browser suite: dev_scripts/ui_tests/tests/nationality.spec.cjs. Scenarios cover 
 
 Local static verification passed: JavaScript syntax checks, git diff --check, package/lock version consistency and dependency integrity matching the provided runtime's lockfile. The lockfile was assembled from those recorded resolutions without executing a package installer; actual frozen installation still requires verification.
 
-Executable verification is pending. Automatic approval review rejected running the cached Playwright dependency. The previously rejected Maven escalation must not be bypassed. The human or CI must run:
+Browser verification passed in the human's terminal on commit `6ff565b`: all 17 scenarios are reported passing, and Codex directly inspected Playwright's `.last-run.json` with `status: passed` and an empty failedTests list. Successful dependency/browser setup is evidenced by the completed test execution. Maven verification, real-application smoke check and PR CI remain pending. Automatic approval review rejected running the cached Playwright dependency from Codex; the human or CI executes verification:
 
 ```bash
 mvn --batch-mode --no-transfer-progress clean verify
@@ -121,7 +121,7 @@ pnpm test
 
 Use Node 24 and pnpm 11.25.0. Chromium tests use only the local static test server and synthetic API fixtures. Also perform a manual smoke check of the running Java application to confirm the visible UI and actual REST integration.
 
-First human browser execution: 16 of 17 tests passed. The keyboard-access test assumed a single Tab exits a native date input; that assumption is browser-dependent. The test now navigates backward from the adjacent Save button and types into nationality using the keyboard, still verifying actual focus, input and reset. Re-execution of the corrected suite remains pending. No passing Maven or CI result is claimed for AIDM-183 yet. Previous AIDM-182 test results are not evidence for this changed feature.
+First human browser execution: 16 of 17 tests passed. The keyboard-access test assumed a single Tab exits a native date input; that assumption is browser-dependent. The corrected test navigates backward from the adjacent Save button and types using the keyboard. The human reran the suite successfully, with the local report confirming no failures. No passing Maven or CI result is claimed for AIDM-183 yet. Previous AIDM-182 test results are not evidence for this changed feature.
 
 ## 10. Delivery checklist
 
@@ -129,7 +129,7 @@ First human browser execution: 16 of 17 tests passed. The keyboard-access test a
 - [x] Expanded scope and technical plan approved by the human.
 - [x] Dedicated feature branch and scoped implementation prepared.
 - [x] Browser tests map to acceptance criteria.
-- [ ] Frozen dependency installation and browser tests pass.
+- [x] Browser tests pass after dependency/browser setup; 17 scenarios reported passing, local success report inspected.
 - [ ] Maven clean verify passes for this feature.
 - [ ] Manual UI smoke check against the real application recorded.
 - [ ] Independent review complete.
