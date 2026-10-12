@@ -1,6 +1,6 @@
 # Nationality user interface delivery
 
-The web interface completes nationality support with creation, editing, display and combined search. Requirements and the technical plan were approved by the human. Implementation, browser verification and local Maven verification are complete; real-application smoke check, independent review and PR CI remain pending.
+The web interface completes nationality support with creation, editing, display and combined search. Requirements and the technical plan were approved by the human. Implementation, browser verification, local Maven verification, real-application smoke check and independent review are complete; PR CI and human merge remain pending.
 
 ## 1. Identity and traceability
 
@@ -107,9 +107,9 @@ The local Jira workaround changes are excluded from feature commits.
 
 Browser suite: dev_scripts/ui_tests/tests/nationality.spec.cjs. Scenarios cover every AC, including null payloads, edit preservation/change/clear, reset, accessible field, literal markup, union/deduplication, case/whitespace/partial matching, one/both searches empty, show-all input, both endpoints failing via HTTP/network/malformed data, delayed-response ordering and operation regressions.
 
-Local static verification passed: JavaScript syntax checks, git diff --check, package/lock version consistency and dependency integrity matching the provided runtime's lockfile. The lockfile was assembled from those recorded resolutions without executing a package installer; actual frozen installation still requires verification.
+Local static verification passed: JavaScript syntax checks, git diff --check, package/lock version consistency and dependency integrity matching the provided runtime's lockfile. The lockfile was assembled from those recorded resolutions; subsequent human dependency setup and browser execution succeeded.
 
-Browser verification passed in the human's terminal on commit `6ff565b`: all 17 scenarios are reported passing, and Codex directly inspected Playwright's `.last-run.json` with `status: passed` and an empty failedTests list. Successful dependency/browser setup is evidenced by the completed test execution. The human also reports successful local Maven clean verify on this feature branch; Codex inspected six Surefire reports with 80 tests, zero failures/errors/skips, latest report 2026-10-12T13:32:17Z, and confirmed the packaged JAR exists. Full Maven lifecycle success remains human-reported. Real-application smoke check and PR CI remain pending. Automatic approval review rejected running the cached Playwright dependency from Codex; the human or CI executes verification:
+Browser verification passed in the human's terminal on commit `6ff565b`: all 17 scenarios are reported passing, and Codex directly inspected Playwright's `.last-run.json` with `status: passed` and an empty failedTests list. Successful dependency/browser setup is evidenced by the completed test execution. The human also reports successful local Maven clean verify on this feature branch; Codex inspected six Surefire reports with 80 tests, zero failures/errors/skips, latest report 2026-10-12T13:32:17Z, and confirmed the packaged JAR exists. Full Maven lifecycle success and the successful real-application smoke check are human-reported; PR CI remains pending. Automatic approval review rejected running the cached Playwright dependency from Codex; the human or CI executes verification:
 
 ```bash
 mvn --batch-mode --no-transfer-progress clean verify
@@ -119,7 +119,7 @@ pnpm exec playwright install chromium
 pnpm test
 ```
 
-Use Node 24 and pnpm 11.25.0. Chromium tests use only the local static test server and synthetic API fixtures. Also perform a manual smoke check of the running Java application to confirm the visible UI and actual REST integration.
+Use Node 24 and pnpm 11.25.0. Chromium tests use only the local static test server and synthetic API fixtures. On 2026-10-12 the human confirmed the manual smoke check against the running packaged Java application: create a person with nationality, preserve it while editing another field, find it case-insensitively, combine a text-only match with a nationality match without duplicates, and clear nationality to show Not specified. This establishes human-observed integration of the visible UI, real REST API and H2 persistence, separately from browser fixtures.
 
 First human browser execution: 16 of 17 tests passed. The keyboard-access test assumed a single Tab exits a native date input; that assumption is browser-dependent. The corrected test navigates backward from the adjacent Save button and types using the keyboard. The human reran the suite successfully, with the local report confirming no failures. PR CI is not yet verified.
 
@@ -131,8 +131,8 @@ First human browser execution: 16 of 17 tests passed. The keyboard-access test a
 - [x] Browser tests map to acceptance criteria.
 - [x] Browser tests pass after dependency/browser setup; 17 scenarios reported passing, local success report inspected.
 - [x] Maven clean verify reported passing on this feature branch; 80 passing Java tests directly verified in reports.
-- [ ] Manual UI smoke check against the real application recorded.
-- [ ] Independent review complete.
+- [x] Manual UI smoke check against the real application recorded; all five scenarios reported successful by the human.
+- [x] Independent review complete against 14fb5a7, recorded in docs/sdlc/reviews/AIDM-183.md; no actionable findings.
 - [ ] GitHub Java 17 and UI quality gate passes on PR head.
 - [ ] Human approves merge.
 
