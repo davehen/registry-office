@@ -121,7 +121,7 @@ pnpm test
 
 Use Node 24 and pnpm 11.25.0. Chromium tests use only the local static test server and synthetic API fixtures. Also perform a manual smoke check of the running Java application to confirm the visible UI and actual REST integration.
 
-No passing Maven, browser-test or CI result is claimed for AIDM-183 yet. Previous AIDM-182 test results are not evidence for this changed feature.
+First human browser execution: 16 of 17 tests passed. The keyboard-access test assumed a single Tab exits a native date input; that assumption is browser-dependent. The test now navigates backward from the adjacent Save button and types into nationality using the keyboard, still verifying actual focus, input and reset. Re-execution of the corrected suite remains pending. No passing Maven or CI result is claimed for AIDM-183 yet. Previous AIDM-182 test results are not evidence for this changed feature.
 
 ## 10. Delivery checklist
 

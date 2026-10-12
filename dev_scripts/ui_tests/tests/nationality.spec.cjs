@@ -104,10 +104,13 @@ test('reopening create resets abandoned nationality and label supports keyboard 
     await setup(page);
     await page.getByRole('button', { name: 'Add New Person' }).click();
     const nationality = page.getByLabel('Nationality', { exact: true });
-    await page.getByLabel('Birth Date', { exact: true }).focus();
-    await page.keyboard.press('Tab');
+    // Native date inputs have browser-dependent internal tab stops. Check
+    // keyboard reachability from the adjacent submit button instead.
+    await page.getByRole('button', { name: 'Save Person' }).focus();
+    await page.keyboard.press('Shift+Tab');
     await expect(nationality).toBeFocused();
-    await nationality.fill('Abandoned');
+    await page.keyboard.type('Abandoned');
+    await expect(nationality).toHaveValue('Abandoned');
     await page.locator('#personModal .close').click();
     await page.getByRole('button', { name: 'Add New Person' }).click();
     await expect(nationality).toHaveValue('');
