@@ -1,6 +1,6 @@
 # Nationality search intake and technical plan
 
-This work item adds optional nationality data and a dedicated REST search while preserving existing API behaviour. Requirements and the technical plan are approved. Implementation and tests are prepared; executable verification and independent review remain pending.
+This work item adds optional nationality data and a dedicated REST search while preserving existing API behaviour. Requirements and the technical plan are approved. Implementation and local verification are complete; independent review and PR CI remain pending.
 
 ## 1. Identity and traceability
 
@@ -102,12 +102,12 @@ ADR: not required. This extends the existing Controller → Service → Reposito
 | --- | --- |
 | Branch | `codex/aidm-182-nationality-search` |
 | Product components changed | Person, CivilRegistryRepository, CivilRegistryService, CivilRegistryServiceImpl, CivilRegistryController |
-| Requirement and acceptance evidence | Domain, service, repository and API tests added; test execution pending |
+| Requirement and acceptance evidence | Domain, service, repository and API tests added; 80 local tests passed |
 | Deviations | None |
 
 Before implementation the snapshot was fresh (2026-10-12T09:19:04Z) and its description hash matched the approved version. The human authorized implementation explicitly in this conversation.
 
-Verification attempt: `mvn --batch-mode --no-transfer-progress clean verify` failed before compilation because the sandbox could not create a lock in the shared Maven cache. The escalation was rejected by automatic approval review. This is not evidence of passing compilation or tests. Local Maven reports Java 21; CI must additionally verify the configured Java 17 target.
+Local verification: the human reports `mvn --batch-mode --no-transfer-progress clean verify` successful on branch `codex/aidm-182-nationality-search`, implementation commit `32094a8`. Codex inspected the six Surefire reports: 80 tests, zero failures, zero errors and zero skipped tests; latest report timestamp 2026-10-12T09:35:31Z. Full Maven lifecycle success is human-reported; the test counts are directly verified from reports. Local Maven reports Java 21; PR CI must additionally verify Java 17. These verification-record changes are documentation-only.
 
 Added test classes: `PersonTest`, `CivilRegistryRepositoryTest`, `NationalityApiIntegrationTest`. Extended `CivilRegistryServiceTest` and `CivilRegistryControllerTest`. No dependency changes were required.
 
@@ -127,7 +127,7 @@ The local Jira snapshot workaround is process infrastructure on a separate branc
 
 Existing MVC tests mock the service, so they cannot establish persistence or full lifecycle correctness. Add repository integration tests and a Spring Boot API integration test with an isolated in-memory database.
 
-Run focused tests followed by `mvn clean verify`; require the GitHub Actions Quality gate on the reviewed commit. Build and test results remain unverified because the local execution attempt was blocked before compilation. Performance remains a qualitative Jira expectation, not a fabricated numerical SLA.
+Local clean verify is reported successful and all 80 tests pass in the inspected reports. Require the GitHub Actions Quality gate on the reviewed PR commit. Performance remains a qualitative Jira expectation, not a fabricated numerical SLA.
 
 ## 10. Delivery checklist
 
@@ -136,8 +136,8 @@ Run focused tests followed by `mvn clean verify`; require the GitHub Actions Qua
 - [x] Questions resolved or explicitly deferred; technical choices stated for review.
 - [x] Human gives the implementation go-ahead for this plan.
 - [x] Feature branch created; process infrastructure changes excluded from feature staging.
-- [ ] Implementation and tests cover acceptance criteria.
-- [ ] Local verification evidence recorded.
+- [x] Implementation and tests cover acceptance criteria; independent assessment pending.
+- [x] Local verification evidence recorded.
 - [ ] GitHub Actions Quality gate green on the PR commit.
 - [ ] Independent review recorded by a human or independent Codex session.
 - [ ] Human approves merge.

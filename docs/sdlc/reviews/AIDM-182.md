@@ -36,10 +36,10 @@ Status: pending. This report is a handoff for a human or independent Codex sessi
 
 ## 4. Findings
 
-No independent findings recorded yet. Do not interpret this as a clean review. The local build attempt was blocked before compilation by cache permissions; escalation was rejected. Obtain actual build evidence before deciding.
+No independent findings recorded yet. Do not interpret this as a clean review. The human reports successful local clean verify on implementation commit `32094a8`; Codex verified six Surefire reports containing 80 tests with no failures, errors or skips (latest report 2026-10-12T09:35:31Z). PR CI remains pending. The independent reviewer must assess the code and evidence directly.
 
 Critical and High findings block merge. Medium findings require a human decision; Low findings may be deferred with a rationale.
 
 ## 5. Decision
 
-Recommendation: pending independent review and executable verification. Only a human may approve merge.
+Recommendation: pending independent review and PR CI. Only a human may approve merge.
