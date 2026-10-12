@@ -1,4 +1,20 @@
 const API_BASE_URL = '/person';
+let listRequestVersion = 0;
+
+function beginListRequest() {
+    const version = ++listRequestVersion;
+    renderTable([]);
+    document.getElementById('searchStatus').textContent = 'Loading...';
+    document.getElementById('personTable').setAttribute('aria-busy', 'true');
+    return version;
+}
+
+function finishListRequest(version, persons, message) {
+    if (version !== listRequestVersion) return;
+    renderTable(persons);
+    document.getElementById('searchStatus').textContent = message;
+    document.getElementById('personTable').setAttribute('aria-busy', 'false');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     loadPersons();
@@ -10,33 +26,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadPersons() {
+    const version = beginListRequest();
     try {
         const response = await fetch(API_BASE_URL);
+        if (!response.ok) throw new Error('Failed to load persons');
         const persons = await response.json();
-        renderTable(persons);
+        if (!Array.isArray(persons)) throw new Error('Invalid persons response');
+        finishListRequest(version, persons, persons.length ? '' : 'No persons found');
     } catch (error) {
         console.error('Error loading persons:', error);
-        alert('Failed to load persons from server.');
+        finishListRequest(version, [], 'Failed to load persons from server.');
     }
 }
 
 async function searchPersons() {
     const text = document.getElementById('searchInput').value;
-    if (!text) {
-        loadPersons();
+    if (!text.trim()) {
+        await loadPersons();
         return;
     }
+    const version = beginListRequest();
     try {
-        const response = await fetch(`${API_BASE_URL}/search/${encodeURIComponent(text)}`);
-        if (response.status === 404) {
-            alert('No persons found for search: ' + text);
-            return;
+        const [textResponse, nationalityResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/search/${encodeURIComponent(text)}`),
+            fetch(`${API_BASE_URL}/nationality/${encodeURIComponent(text.trim())}`)
+        ]);
+        if ((!textResponse.ok && textResponse.status !== 404) || !nationalityResponse.ok) {
+            throw new Error('Search endpoint failed');
         }
-        const persons = await response.json();
-        renderTable(persons);
+        const [textMatches, nationalityMatches] = await Promise.all([
+            textResponse.status === 404 ? [] : textResponse.json(),
+            nationalityResponse.json()
+        ]);
+        if (!Array.isArray(textMatches) || !Array.isArray(nationalityMatches)) {
+            throw new Error('Invalid search response');
+        }
+        const persons = [...new Map([...textMatches, ...nationalityMatches]
+            .map(person => [person.id, person])).values()];
+        finishListRequest(version, persons, persons.length ? '' : 'No persons found');
     } catch (error) {
         console.error('Error searching persons:', error);
-        alert('Search failed.');
+        finishListRequest(version, [], 'Search failed. Please try again.');
     }
 }
 
@@ -46,18 +76,21 @@ function renderTable(persons) {
 
     persons.forEach(person => {
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${person.id}</td>
-            <td>${person.userName}</td>
-            <td>${person.firstName}</td>
-            <td>${person.lastName}</td>
-            <td>${person.email}</td>
-            <td>${person.birthDate}</td>
-            <td>
-                <button class="btn-edit" onclick="editPerson(${person.id})">Edit</button>
-                <button class="btn-delete" onclick="deletePerson(${person.id})">Delete</button>
-            </td>
-        `;
+        [person.id, person.userName, person.firstName, person.lastName,
+            person.email, person.birthDate, person.nationality || 'Not specified'].forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value == null ? '' : String(value);
+            row.appendChild(cell);
+        });
+        const actions = document.createElement('td');
+        [['Edit', 'btn-edit', editPerson], ['Delete', 'btn-delete', deletePerson]].forEach(([label, className, action]) => {
+            const button = document.createElement('button');
+            button.textContent = label;
+            button.className = className;
+            button.addEventListener('click', () => action(person.id));
+            actions.appendChild(button);
+        });
+        row.appendChild(actions);
         tbody.appendChild(row);
     });
 }
@@ -69,7 +102,8 @@ async function savePerson() {
         firstName: document.getElementById('firstName').value,
         lastName: document.getElementById('lastName').value,
         email: document.getElementById('email').value,
-        birthDate: document.getElementById('birthDate').value
+        birthDate: document.getElementById('birthDate').value,
+        nationality: document.getElementById('nationality').value || null
     };
 
     if (id) person.id = parseInt(id);
@@ -180,6 +214,7 @@ async function editPerson(id) {
         document.getElementById('lastName').value = person.lastName;
         document.getElementById('email').value = person.email;
         document.getElementById('birthDate').value = person.birthDate;
+        document.getElementById('nationality').value = person.nationality ?? '';
     } catch (error) {
         console.error('Error fetching person details:', error);
         alert('Failed to fetch person details.');

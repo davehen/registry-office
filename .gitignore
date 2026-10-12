@@ -2,3 +2,6 @@
 /target/
 /.idea/
 /pom.xml.bak
+/dev_scripts/ui_tests/node_modules/
+/dev_scripts/ui_tests/test-results/
+/dev_scripts/ui_tests/playwright-report/
