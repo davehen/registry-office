@@ -48,9 +48,31 @@ class AutopilotRegressionTest < Minitest::Test
       args = instance.codex_arguments(writable, 'schema.json', 'result.json')
       assert_equal writable ? 'workspace-write' : 'read-only', args[args.index('--sandbox') + 1]
       assert_includes args, '--json'
+      assert_includes args, 'approval_policy="never"'
+      assert_includes args, 'sandbox_workspace_write.network_access=false'
+      assert_includes args, 'sandbox_workspace_write.writable_roots=[]'
+      assert_includes args, 'sandbox_workspace_write.exclude_slash_tmp=true'
+      assert_includes args, 'sandbox_workspace_write.exclude_tmpdir_env_var=true'
       refute_includes args, '--approve-for-me'
       refute_includes args, '--dangerously-bypass-approvals-and-sandbox'
+      refute_includes args, '--ignore-user-config'
+      refute_includes args, '--ignore-rules'
     end
+  end
+
+  def test_unsupported_approval_stops_without_retry_or_bypass
+    instance = runner
+    instance.instance_variable_set(:@run, fixture_directory)
+    instance.instance_variable_set(:@serial, 0)
+    instance.define_singleton_method(:git) { |*| 'unchanged-head' }
+    calls = 0
+    instance.define_singleton_method(:command) do |*args, **|
+      calls += 1
+      ['command execution approval is not supported in exec mode', false]
+    end
+    error = assert_raises(RuntimeError) { instance.agent('developer', 'mock prompt', { 'required' => [] }) }
+    assert_includes error.message, 'no retry or bypass'
+    assert_equal 1, calls
   end
 
   def test_git_transport_retries_and_uses_https_without_global_config_change

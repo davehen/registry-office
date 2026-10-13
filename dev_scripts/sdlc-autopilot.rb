@@ -19,6 +19,15 @@ class SdlcAutopilot
   class BaseAdvanced < StandardError; end
   REPOSITORY = 'davehen/registry-office'.freeze
   MAX_ATTEMPTS = 5
+  # Per-invocation PoC profile, explicitly authorized by the human. No global
+  # config/rules changes, no policy bypass, and no approval escalation.
+  POC_AGENT_CONFIG = [
+    'approval_policy="never"',
+    'sandbox_workspace_write.network_access=false',
+    'sandbox_workspace_write.writable_roots=[]',
+    'sandbox_workspace_write.exclude_slash_tmp=true',
+    'sandbox_workspace_write.exclude_tmpdir_env_var=true'
+  ].freeze
   SCRIPT = 'dev_scripts/sdlc-autopilot.rb'.freeze
   RUNNER_FILES = [SCRIPT, 'dev_scripts/tests/sdlc-autopilot-test.rb'].freeze
   LOCAL_BRIDGE_FILES = %w[dev_scripts/jira-read-issue.sh dev_scripts/jira-sync-snapshot.rb].freeze
@@ -187,6 +196,7 @@ class SdlcAutopilot
 
   def codex_arguments(writable, schema_file, result_file)
     ['codex', 'exec', '--json', '--ephemeral', '--sandbox', writable ? 'workspace-write' : 'read-only',
+     *POC_AGENT_CONFIG.flat_map { |setting| ['-c', setting] },
      '--output-schema', schema_file, '--output-last-message', result_file, '-']
   end
 
@@ -200,6 +210,9 @@ class SdlcAutopilot
       File.rename(result_file, File.join(@run, "#{role}-result-previous-#{@serial}.json")) if File.file?(result_file)
       output, success = command(*args, timeout: 2400, input: prompt, discard_output: true, diagnostic_errors: true, allow_failure: true)
       raise 'Agent changed the commit without authorization.' unless git('rev-parse', 'HEAD') == before
+      if output.match?(/command execution approval is not supported in exec mode|approval request failed/i)
+        raise "PoC runtime still requires an unsupported approval; no retry or bypass. Inspect #{@last_log}; an interactive approval or administrator-supported runtime is required."
+      end
       unless success
         transient = output.match?(/timed out|stream disconnected|websocket.*closed|connection.*(?:reset|refused)|HTTP (?:429|50[234])/i)
         raise "Codex session failed; inspect CLI diagnostics: #{@last_log}" unless transient && attempt < 2
@@ -239,6 +252,11 @@ class SdlcAutopilot
       by you: the orchestrator performs them. Do not run builds/test/package tools;
       the orchestrator executes those outside your session and provides evidence.
       Do not edit AGENTS.md, .agents, the autopilot, or Jira bridge files.
+      This session uses the human-approved non-interactive PoC profile:
+      no escalation requests, no network from shell commands, and writes only
+      inside the current feature checkout for the developer. Managed denials and
+      secret protections still apply. If a necessary operation is denied, report
+      blocked; do not switch profiles, alter rules, or try another execution route.
       Ordinary repository source, tests, scripts and documentation paths are
       allowed when justified by Jira. Do not change protected policy, auth,
       orchestrator/bridge files or commit generated build/test artifacts.
