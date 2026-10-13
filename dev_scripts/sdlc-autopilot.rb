@@ -22,7 +22,7 @@ class SdlcAutopilot
   MAX_ATTEMPTS = 3
   SCRIPT = 'dev_scripts/sdlc-autopilot.rb'.freeze
   LOCAL_BRIDGE_FILES = %w[dev_scripts/jira-read-issue.sh dev_scripts/jira-sync-snapshot.rb].freeze
-  ALLOWED = %r{\A(?:src/|docs/sdlc/|dev_scripts/ui_tests/|pom\.xml\z|README\.md\z|\.gitignore\z|\.github/workflows/quality-gate\.yml\z)}
+  ALLOWED = %r{\A(?:src/|docs/(?:sdlc/|duplicate-management\.md\z)|dev_scripts/ui_tests/|pom\.xml\z|README\.md\z|\.gitignore\z|\.github/workflows/quality-gate\.yml\z)}
 
   def initialize
     valid_arguments = ARGV == [ISSUE] || (ARGV.length == 3 && ARGV[0] == ISSUE && ARGV[1] == '--resume')
@@ -159,6 +159,10 @@ class SdlcAutopilot
       by you: the orchestrator performs them. Do not run builds/test/package tools;
       the orchestrator executes those outside your session and provides evidence.
       Do not edit AGENTS.md, .agents, the autopilot, or Jira bridge files.
+      Allowed delivery paths: src/, docs/sdlc/, docs/duplicate-management.md,
+      dev_scripts/ui_tests/, pom.xml, README.md, .gitignore, and
+      .github/workflows/quality-gate.yml. Place all other delivery documents
+      under docs/sdlc/ rather than introducing files outside this list.
       Source: #{@request_file}; approved plan: #{@plan_file}.
       Runtime files and diagnostic output must remain outside Git.
       Sanitize all final output: never copy raw Jira content or credentials into
