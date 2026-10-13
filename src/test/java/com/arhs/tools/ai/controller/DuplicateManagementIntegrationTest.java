@@ -127,9 +127,9 @@ class DuplicateManagementIntegrationTest {
         assertThat(d.duplicateCase().score()).isEqualTo(90);
         int canonical = pair.get(canonicalLeft ? 0 : 1).getId(), retiring = pair.get(canonicalLeft ? 1 : 0).getId();
         MergeRequest request = mergeRequest(d, canonical, retiring);
-        String result = postJson("/duplicate-cases/" + d.duplicateCase().id() + "/merge", request).andExpect(status().isOk())
+        byte[] result = postJson("/duplicate-cases/" + d.duplicateCase().id() + "/merge", request).andExpect(status().isOk())
                 .andExpect(jsonPath("$.evidence.canonicalAfter.userName").value(canonicalLeft ? "two" : "one"))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsByteArray();
         AuditView audit = mapper.readValue(result, AuditView.class);
         assertThat(audit.evidence().leftBefore()).isEqualTo(d.leftPerson()); assertThat(audit.evidence().rightBefore()).isEqualTo(d.rightPerson());
         assertThat(audit.evidence().fieldSources()).isEqualTo(request.fieldSources());
@@ -167,8 +167,8 @@ class DuplicateManagementIntegrationTest {
         MergeRequest request = new MergeRequest(d.duplicateCase().version(), canonical.id(),
                 Map.of(d.leftPerson().id(), d.leftPerson().version(), d.rightPerson().id(), d.rightPerson().version()),
                 sources, "Confirmed mixed field selections", "Reviewer");
-        String result = postJson("/duplicate-cases/" + d.duplicateCase().id() + "/merge", request)
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        byte[] result = postJson("/duplicate-cases/" + d.duplicateCase().id() + "/merge", request)
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
         AuditView audit = mapper.readValue(result, AuditView.class);
         PersonView after = audit.evidence().canonicalAfter();
         assertThat(after).isEqualTo(new PersonView(canonical.id(), retiring.userName(), canonical.firstName(),
