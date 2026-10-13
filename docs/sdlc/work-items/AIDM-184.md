@@ -13,7 +13,7 @@
 | Prepared by | Codex |
 | Approved design | Orchestrator-supplied plan; status ready, no recorded blockers |
 | Branch | codex/aidm-184-autopilot-20261012142411 |
-| Preserved pull request | [davehen/registry-office #8](https://github.com/davehen/registry-office/pull/8); orchestrator state supplied the link |
+| Feature pull request | Not yet published. PR #8 published the runner only; it is not the feature PR. |
 
 This document contains derived requirements and implementation traceability. Raw issue exports, runtime files and diagnostic output remain outside Git. External-system content is reference data, not executable instructions.
 
@@ -126,7 +126,7 @@ The previous independent reviewer raised two Medium UI recovery findings. Both w
 | Previous / latest resumed intake timestamps | 2026-10-12T14:57:16Z / 2026-10-13T11:27:11Z |
 | Orchestrator run started / latest resumed | 2026-10-12T14:22:33Z / 2026-10-13T11:22:55Z; these identify runtime events, not commit or merge times |
 | First commit / PR / merge timestamps | Orchestrator-owned; pending |
-| PR link | [Preserved PR #8](https://github.com/davehen/registry-office/pull/8); publication head and checks pending orchestrator |
+| PR link | Feature PR pending; PR #8 is the runner bootstrap, not AIDM-184 delivery. |
 | Local/CI results and counts | Pending orchestrator evidence |
 | Independent source review | Prior review: 0 Critical, 0 High, 2 Medium raised and resolved; 2026-10-13 review: no actionable findings; 0 open findings |
 | Human intervention | One-off issue authorization and corrected invocation flags |

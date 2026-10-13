@@ -6,7 +6,7 @@
 - Repository: davehen/registry-office.
 - Intake: [approved requirement and acceptance traceability](../work-items/AIDM-184.md).
 - Branch: `codex/aidm-184-autopilot-20261012142411`.
-- Pull request: [preserved PR #8](https://github.com/davehen/registry-office/pull/8), identified by orchestrator state; final publication head and checks pending.
+- Feature pull request: not yet published. PR #8 is the runner bootstrap, not this feature's delivery.
 
 ## Change summary
 
@@ -20,12 +20,12 @@ Authored Java matcher, database, API and competing-transaction tests cover AC-00
 
 The resumed acceptance-test additions exercise both merge directions with mixed field sources and visibly distinct stored values, including nullable nationality. They check persisted exact values, complete audit snapshots and ordered events. Negative API cases additionally reject extra source fields, incomplete person-version maps and unknown merge request properties without mutation.
 
-These are test sources, not passing execution evidence. The coordinator must replace pending results with actual command/CI evidence on the final commit.
+Local verification on commit `182777d060b07423801ba8a3a7d0cd00fb49c4c8` passed in the human's terminal on 2026-10-13: Maven clean verify, 130 Java tests, 31 mocked UI tests and 1 real-backend browser journey. Both browser reports confirm passed with zero failed tests. Subsequent delivery-evidence edits change documentation only; GitHub CI on the publication head remains required.
 
 ## Quality evidence
 
-- [ ] Relevant Java and mocked/real browser suites passed; counts pending orchestrator.
-- [ ] `mvn clean verify` passed; result pending orchestrator.
+- [x] Java: 130 passed, zero failures/errors/skips. Mocked UI: 31 passed. Real-backend browser: 1 passed.
+- [x] `mvn clean verify` passed on the reviewed commit.
 - [ ] GitHub Actions required Quality gate green on final PR head.
 - [x] Source artifacts summarize approved behavior without raw Jira exports or credentials.
 - [x] Independent source review completed and findings resolved.
@@ -36,7 +36,7 @@ These are test sources, not passing execution evidence. The coordinator must rep
 - Resume reviewer: independent Codex agent `review_resume_source`, 2026-10-13; inspected the preserved implementation and additional acceptance-test sources with no actionable findings.
 - Report: [AIDM-184 independent review](../reviews/AIDM-184.md).
 - Findings: two Medium UI recovery findings raised, corrected and independently re-reviewed; no open source findings.
-- Runtime evidence and final commit reconciliation remain pending. Source review alone does not authorize merge readiness.
+- Final independent reviewer: `aidm184_interactive_review`; approved source and independently inspected actual local test evidence on `182777d060b07423801ba8a3a7d0cd00fb49c4c8`, with no actionable findings. GitHub CI and publication remain pending.
 
 ## Delivery metrics
 
@@ -45,10 +45,10 @@ These are test sources, not passing execution evidence. The coordinator must rep
 | Previous / latest resumed intake recorded (UTC) | 2026-10-12T14:57:16Z / 2026-10-13T11:27:11Z |
 | Orchestrator run started / latest resumed (UTC) | 2026-10-12T14:22:33Z / 2026-10-13T11:22:55Z |
 | Initial intake / first commit / PR / merge timestamps | Pending orchestrator evidence |
-| Local test result / totals | Not executed in developer session; pending orchestrator |
+| Local test result / totals | 130 Java, 31 mocked browser, 1 real-backend browser passed; clean verify succeeded |
 | CI result | Pending final-head checks |
 | Review findings | Prior review: 0 Critical, 0 High, 2 Medium resolved; 2026-10-13 source review: no actionable findings; 0 open source findings |
-| Human interventions | One-off issue authorization; corrected prior invocation flags |
+| Human interventions | Issue creation/authorization; multiple runner repairs and resume invocations; permission-profile approval; interactive continuation; terminal-only verification due runtime restrictions. Exact intervention count not recorded reliably. |
 | AI runtime / cost | Authoritative metrics unavailable to this session |
 
 ## Merge and application handoff
