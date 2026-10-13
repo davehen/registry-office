@@ -7,6 +7,7 @@ const files = {
     '/': ['index.html', 'text/html'],
     '/index.html': ['index.html', 'text/html'],
     '/app.js': ['app.js', 'text/javascript'],
+    '/duplicates.js': ['duplicates.js', 'text/javascript'],
     '/style.css': ['style.css', 'text/css']
 };
 http.createServer((request, response) => {

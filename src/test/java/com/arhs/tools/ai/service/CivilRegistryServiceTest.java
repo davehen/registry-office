@@ -69,7 +69,8 @@ class CivilRegistryServiceTest {
         Person created = service.create(samplePerson);
 
         assertNotNull(created);
-        verify(repository).save(samplePerson);
+        verify(repository).save(argThat(p -> p.getId() == 0 && p.equals(samplePerson)
+                && java.util.Objects.equals(p.getNationality(), samplePerson.getNationality())));
     }
 
     @Test
@@ -157,13 +158,13 @@ class CivilRegistryServiceTest {
 
     @Test
     void deleteAll_ShouldDeleteAllAndReturnList() {
-        Iterable<Person> allPersons = List.of(samplePerson);
-        when(repository.findAll()).thenReturn(allPersons);
+        List<Person> allPersons = List.of(samplePerson);
+        when(repository.findByStatus(Person.Status.ACTIVE)).thenReturn(allPersons);
 
         List<Person> result = service.deleteAll();
 
         assertEquals(1, result.size());
-        verify(repository).deleteAll();
+        verify(repository).deleteAll(allPersons);
     }
 
     @Test
