@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -52,7 +53,7 @@ public class DuplicateManagementService {
         cases.findAll().forEach(c -> existing.put(new DuplicateMatcher.Pair(c.getLeftPersonId(), c.getRightPersonId()), c));
         var candidates = matcher.candidates(active);
         Set<DuplicateMatcher.Pair> matching = new HashSet<>();
-        Instant now = Instant.now();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         int created = 0, reopened = 0, obsolete = 0;
         for (var pair : candidates) {
             Person left = byId.get(pair.left()), right = byId.get(pair.right());
@@ -106,7 +107,7 @@ public class DuplicateManagementService {
         String reason = reason(request.reason()), operator = operator(request.operatorName());
         return tx.execute(ignored -> {
             DuplicateCase c = caseById(id); requireOpen(c, request.expectedCaseVersion());
-            Instant now = Instant.now();
+            Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
             c.resolve(DuplicateCase.Status.DISMISSED, reason, operator, now, null);
             event(c, "DISMISSED", now, reason, operator); cases.flush();
             return detailOf(c);
@@ -151,7 +152,7 @@ public class DuplicateManagementService {
             canonical.setLastName(selected.getLastName()); canonical.setEmail(selected.getEmail());
             canonical.setBirthDate(selected.getBirthDate()); canonical.setNationality(selected.getNationality());
             canonical.recordMerge(); persons.flush();
-            Instant now = Instant.now();
+            Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
             PersonMergeAudit audit = audits.save(new PersonMergeAudit(c.getId(), canonical.getId(), retired.getId(),
                     now, reason, operator, json(new MergeEvidence(leftBefore, rightBefore, PersonView.of(canonical), sources))));
             c.resolve(DuplicateCase.Status.MERGED, reason, operator, now, audit.getId());

@@ -24,6 +24,8 @@ Local verification on commit `182777d060b07423801ba8a3a7d0cd00fb49c4c8` passed i
 
 ## Quality evidence
 
+CI run `38397091972` failed on Java 17 with 130 tests, 3 failures and zero errors. All three failures compared the immediate merge audit to its persisted representation: nanosecond timestamps were rounded by timestamp(6) storage. The repair aligns audit and shared detection/resolution timestamps to microseconds before persistence, retaining exact audit-equality assertions. Two deterministic persistence regression cases cover nanoseconds and a second-boundary rounding case, forcing reload with EntityManager.clear(). Verification of this repair is pending; earlier passing evidence applies only to the older tested commit above.
+
 - [x] Java: 130 passed, zero failures/errors/skips. Mocked UI: 31 passed. Real-backend browser: 1 passed.
 - [x] `mvn clean verify` passed on the reviewed commit.
 - [ ] GitHub Actions required Quality gate green on final PR head.

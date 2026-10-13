@@ -2,6 +2,10 @@
 
 ## Final interactive evidence reconciliation — 2026-10-13
 
+### CI timestamp-precision repair review
+
+After CI run 38397091972, `aidm184_interactive_review` independently reviewed the timestamp repair and approved its source with no actionable findings. Truncation before persistence preserves identical microsecond timestamps for case, event and audit; transactions, versions and identifier transfer are unchanged. Two deterministic persistence regression cases flush and clear the persistence context before exact reload comparison, including near-second rollover. Existing full-audit equality assertions remain intact. Fresh execution is required for this repair; the passing counts below refer to the earlier commit only.
+
 Independent reviewer `aidm184_interactive_review` approved commit `182777d060b07423801ba8a3a7d0cd00fb49c4c8` after inspecting source and actual coordinator reports. Maven clean verify succeeded: 130 tests, zero failures/errors/skips; mocked UI: 31 passed; real-backend browser: 1 passed. Both browser last-run reports confirm passed with no failed tests. The Unicode fix parses JSON response bytes without weakening assertions. No actionable source findings remain. Subsequent publication-evidence edits are documentation only. GitHub final-head checks, feature PR publication, merge and application startup remain pending; PR #8 is the runner bootstrap, not the feature PR.
 
 ## 1. Review identity

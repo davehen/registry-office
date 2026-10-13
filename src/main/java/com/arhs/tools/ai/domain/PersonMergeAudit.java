@@ -3,6 +3,7 @@ package com.arhs.tools.ai.domain;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity @Immutable
 public class PersonMergeAudit {
@@ -19,7 +20,8 @@ public class PersonMergeAudit {
     public PersonMergeAudit(Long caseId, int canonical, int retired, Instant at,
                             String reason, String operator, String evidence) {
         this.caseId = caseId; canonicalPersonId = canonical; retiredPersonId = retired;
-        mergedAt = at; this.reason = reason; operatorName = operator; evidenceJson = evidence;
+        // Match timestamp(6) storage before returning the immutable audit DTO.
+        mergedAt = at.truncatedTo(ChronoUnit.MICROS); this.reason = reason; operatorName = operator; evidenceJson = evidence;
     }
     public Long getId() { return id; }
     public Long getCaseId() { return caseId; }
