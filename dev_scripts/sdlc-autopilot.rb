@@ -36,10 +36,11 @@ class SdlcAutopilot
 
   def initialize
     @issue = ARGV.first
-    valid_arguments = @issue && @issue.match?(/\AAIDM-[0-9]+\z/) && (ARGV.length == 1 || (ARGV.length == 3 && ARGV[1] == '--resume'))
-    raise 'Usage: ruby dev_scripts/sdlc-autopilot.rb AIDM-NNN [--resume PRIVATE_RUN_DIRECTORY]' unless valid_arguments
+    @verify_only = ARGV.length == 4 && ARGV[3] == '--verify-only'
+    valid_arguments = @issue && @issue.match?(/\AAIDM-[0-9]+\z/) && (ARGV.length == 1 || ((ARGV.length == 3 || @verify_only) && ARGV[1] == '--resume'))
+    raise 'Usage: ruby dev_scripts/sdlc-autopilot.rb AIDM-NNN [--resume PRIVATE_RUN_DIRECTORY [--verify-only]]' unless valid_arguments
     @root = File.expand_path('..', __dir__)
-    @resume = ARGV.length == 3
+    @resume = ARGV.length >= 3
     if @resume
       @run = File.realpath(ARGV[2])
       stat = File.lstat(@run)
@@ -780,6 +781,18 @@ class SdlcAutopilot
   def run
     puts "#{@issue} per-issue autonomous PoC; artifacts: #{@run}"
     preflight
+    if @verify_only
+      @work = File.join(@run, 'worktree')
+      raise 'Saved feature checkout missing.' unless File.directory?(@work)
+      @branch = git('branch', '--show-current')
+      raise 'Unexpected saved branch.' unless @branch == @state['branch']
+      raise 'Commit or preserve pending changes before verification.' unless changed_paths.empty?
+      raise "Verification failed; inspect #{@failure_log}." unless local_tests
+      @state['interactive_verification_commit'] = git('rev-parse', 'HEAD')
+      phase('verification-only complete; independent review and delivery remain required')
+      puts 'Verification passed. No model session, PR publication or merge performed.'
+      return
+    end
     if @resume
       resume_implementation unless @state['merged']
     else

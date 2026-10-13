@@ -75,6 +75,24 @@ class AutopilotRegressionTest < Minitest::Test
     assert_equal 1, calls
   end
 
+  def test_verification_only_never_invokes_agents_or_delivery
+    instance = runner
+    directory = fixture_directory
+    Dir.mkdir(File.join(directory, 'worktree'))
+    instance.instance_variable_set(:@run, directory)
+    instance.instance_variable_set(:@verify_only, true)
+    instance.instance_variable_set(:@state, { 'branch' => 'saved-feature' })
+    instance.define_singleton_method(:preflight) {}
+    instance.define_singleton_method(:changed_paths) { [] }
+    instance.define_singleton_method(:git) { |*args| args.first == 'branch' ? 'saved-feature' : 'tested-sha' }
+    instance.define_singleton_method(:local_tests) { true }
+    %i[agent publish_and_merge launch_main].each do |method|
+      instance.define_singleton_method(method) { |*| raise 'Unexpected model or delivery action' }
+    end
+    capture_io { instance.run }
+    assert_equal 'tested-sha', instance.instance_variable_get(:@state)['interactive_verification_commit']
+  end
+
   def test_git_transport_retries_and_uses_https_without_global_config_change
     instance = runner
     calls = []
