@@ -116,7 +116,9 @@ class SdlcAutopilot
     return command('git', *args, **options).first.strip unless %w[fetch push pull].include?(args.first)
     transport = @state && @state['git_transport']
     3.times do |attempt|
-      prefix = transport == 'https' ? ['git', '-c', "remote.origin.url=https://github.com/#{REPOSITORY}.git", '-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential'] : ['git']
+      # remote.origin.url is multivalued: -c adds a URL rather than replacing
+      # the existing first URL. Rewrite SSH URLs for this process instead.
+      prefix = transport == 'https' ? ['git', '-c', 'url.https://github.com/.insteadOf=git@github.com:', '-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential'] : ['git']
       begin
         output, success = command(*prefix, *args, **options.merge(allow_failure: true, timeout: 180,
             env: { 'GIT_TERMINAL_PROMPT' => '0', 'GIT_TRACE' => nil, 'GIT_TRACE_CURL' => nil, 'GIT_CURL_VERBOSE' => nil,

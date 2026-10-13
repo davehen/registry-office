@@ -54,7 +54,8 @@ class AutopilotRegressionTest < Minitest::Test
     end
     assert_equal 'ok', instance.git('fetch', 'origin', 'main')
     assert_equal 3, calls.length
-    assert calls.last.include?('remote.origin.url=https://github.com/davehen/registry-office.git')
+    assert calls.last.include?('url.https://github.com/.insteadOf=git@github.com:')
+    refute calls.last.any? { |arg| arg.start_with?('remote.origin.url=') }
     assert calls.last.include?('credential.helper=!gh auth git-credential')
     refute calls.flatten.include?('--global')
   end
