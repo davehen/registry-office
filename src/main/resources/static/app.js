@@ -1,6 +1,16 @@
 const API_BASE_URL = '/person';
 let listRequestVersion = 0;
 
+async function personErrorMessage(response) {
+    const messages = {
+        400: 'Invalid person details. Check the form and try again.',
+        404: 'Person no longer available. Refresh the person list.',
+        409: 'Conflict: the person changed or an identifier is unavailable. Refresh and review before trying again.',
+        410: 'This person has been merged. Refresh the person list.'
+    };
+    return messages[response.status] || 'Server error. Please try again.';
+}
+
 function beginListRequest() {
     const version = ++listRequestVersion;
     renderTable([]);
@@ -121,8 +131,7 @@ async function savePerson() {
             loadPersons();
             document.getElementById('personForm').reset();
         } else {
-            const errorData = await response.json();
-            alert('Error: ' + (errorData.message || 'Failed to save person'));
+            alert(await personErrorMessage(response));
         }
     } catch (error) {
         console.error('Error saving person:', error);
@@ -138,7 +147,7 @@ async function deletePerson(id) {
         if (response.ok) {
             loadPersons();
         } else {
-            alert('Failed to delete person.');
+            alert(await personErrorMessage(response));
         }
     } catch (error) {
         console.error('Error deleting person:', error);
@@ -154,7 +163,7 @@ async function deleteAllPersons() {
         if (response.ok) {
             loadPersons();
         } else {
-            alert('Failed to delete all persons.');
+            alert(await personErrorMessage(response));
         }
     } catch (error) {
         console.error('Error deleting all persons:', error);
@@ -178,8 +187,7 @@ async function deleteByEmail() {
             loadPersons();
             document.getElementById('deleteEmail').value = '';
         } else {
-            const errorData = await response.json();
-            alert('Error: ' + (errorData.message || 'Person not found.'));
+            alert(await personErrorMessage(response));
         }
     } catch (error) {
         console.error('Error deleting by email:', error);
@@ -204,6 +212,11 @@ function closeModal(modalId) {
 async function editPerson(id) {
     try {
         const response = await fetch(`${API_BASE_URL}/${id}`);
+        if (!response.ok) {
+            alert(await personErrorMessage(response));
+            if (response.status === 404 || response.status === 410) await loadPersons();
+            return;
+        }
         const person = await response.json();
         
         openModal('personModal');
@@ -217,7 +230,7 @@ async function editPerson(id) {
         document.getElementById('nationality').value = person.nationality ?? '';
     } catch (error) {
         console.error('Error fetching person details:', error);
-        alert('Failed to fetch person details.');
+        alert('A network or response error occurred while loading person details.');
     }
 }
 

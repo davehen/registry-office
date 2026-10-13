@@ -38,6 +38,10 @@ The application will start on port `8080`: send a sample request to `http://loca
 ---
 
 # REST APIs
+
+Duplicate detection, case review and controlled merge are documented in
+[Duplicate management](docs/duplicate-management.md). Delivery traceability for
+this feature is recorded in [AIDM-184 intake](docs/sdlc/work-items/AIDM-184.md).
 The sample application is almost as easy as it gets. It manages `Person` objects in an in-memory database using _Spring Data_.
 You can execute HTTP requests against the following endpoints:
 

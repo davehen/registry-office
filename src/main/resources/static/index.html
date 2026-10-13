@@ -22,7 +22,11 @@
         </header>
 
         <main>
-            <div class="card">
+            <nav class="view-navigation" aria-label="Registry views">
+                <button id="personsViewButton" type="button" aria-pressed="true">Persons</button>
+                <button id="duplicatesViewButton" type="button" aria-pressed="false">Duplicate Management</button>
+            </nav>
+            <div class="card" id="personsView">
                 <h2>Registered Persons</h2>
                 <p id="searchStatus" role="status" aria-live="polite"></p>
                 <div class="table-container">
@@ -45,6 +49,25 @@
                     </table>
                 </div>
             </div>
+            <section class="card" id="duplicatesView" hidden aria-labelledby="duplicatesHeading">
+                <h2 id="duplicatesHeading">Duplicate Management</h2>
+                <div class="duplicate-toolbar">
+                    <button type="button" id="scanDuplicates" class="btn-primary">Scan for duplicates</button>
+                    <label>Status <select id="caseStatus" aria-label="Status"><option>OPEN</option><option>DISMISSED</option><option>MERGED</option><option>OBSOLETE</option></select></label>
+                    <label>Confidence <select id="caseConfidence" aria-label="Confidence"><option value="">All</option><option>HIGH</option><option>MEDIUM</option></select></label>
+                </div>
+                <p id="scanSummary" role="status"></p>
+                <p id="duplicateStatus" role="status" aria-live="polite"></p>
+                <div class="table-container">
+                    <table aria-label="Duplicate cases"><thead><tr><th>Case</th><th>Persons</th><th>Status</th><th>Score</th><th>Confidence</th><th>Reasons</th><th>Action</th></tr></thead><tbody id="duplicateRows"></tbody></table>
+                </div>
+                <div class="duplicate-toolbar">
+                    <button id="previousCases" type="button" disabled>Previous</button>
+                    <span id="casePageSummary"></span>
+                    <button id="nextCases" type="button" disabled>Next</button>
+                </div>
+                <section id="caseReview" hidden aria-label="Case review"></section>
+            </section>
         </main>
 
         <!-- Person Modal -->
@@ -102,5 +125,6 @@
         </footer>
     </div>
     <script src="app.js"></script>
+    <script src="duplicates.js"></script>
 </body>
 </html>
