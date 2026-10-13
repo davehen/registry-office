@@ -27,6 +27,14 @@ class AutopilotRegressionTest < Minitest::Test
     end
   end
 
+  def test_role_context_keeps_review_in_a_separate_orchestrated_session
+    prompt = runner.context
+    assert_includes prompt, 'perform ONLY your assigned role'
+    assert_includes prompt, 'Do not spawn subagents'
+    assert_includes prompt, 'Pending later phases are not blockers'
+    assert_includes prompt, 'never bypass or retry denied actions'
+  end
+
   def test_policy_runner_and_generated_artifacts_remain_protected
     instance = runner
     %w[AGENTS.md .agents/skills/test/SKILL.md .codex/config.toml .git/config dev_scripts/sdlc-autopilot.rb dev_scripts/jira-read-issue.sh node_modules/pkg.js target/example.jar tests/test-results/trace.zip ../outside].each do |path|
