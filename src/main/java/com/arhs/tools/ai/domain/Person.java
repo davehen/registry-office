@@ -21,6 +21,27 @@ public class Person {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthDate;
     private String nationality;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.ACTIVE;
+    private Integer mergedIntoPersonId;
+    @Version
+    private long version;
+    // Makes even a merge selecting only canonical values a versioned write.
+    private long mergeCount;
+
+    public enum Status { ACTIVE, MERGED }
+
+    public Status getStatus() { return status; }
+    public Integer getMergedIntoPersonId() { return mergedIntoPersonId; }
+    public long getVersion() { return version; }
+    public void recordMerge() { mergeCount++; }
+    public void retireInto(int canonicalId) {
+        status = Status.MERGED;
+        mergedIntoPersonId = canonicalId;
+        userName = null;
+        email = null;
+    }
 
     protected Person() {
     }

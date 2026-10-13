@@ -52,3 +52,22 @@ jobs:
       - name: Run UI quality gate
         working-directory: dev_scripts/ui_tests
         run: pnpm test
+
+      - name: Run real backend browser acceptance
+        working-directory: dev_scripts/ui_tests
+        env:
+          REGISTRY_BASE_URL: http://127.0.0.1:8080
+        run: |
+          java -jar ../../target/registry-office-1.0.0.jar > "$RUNNER_TEMP/registry-office-app.log" 2>&1 &
+          registry_app_pid=$!
+          trap 'kill "$registry_app_pid"' EXIT
+          registry_ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "$REGISTRY_BASE_URL/person" > /dev/null; then
+              registry_ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$registry_ready" = true
+          pnpm exec playwright test --config playwright.real.config.cjs

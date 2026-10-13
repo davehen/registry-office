@@ -3,15 +3,15 @@ package com.arhs.tools.ai.service;
 import com.arhs.tools.ai.domain.Person;
 import com.arhs.tools.ai.domain.util.PersonUtil;
 import com.arhs.tools.ai.exception.DuplicatePropertyException;
+import com.arhs.tools.ai.exception.RegistryConflictException;
 import com.arhs.tools.ai.repository.CivilRegistryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static com.arhs.tools.ai.domain.util.PersonUtil.MAX_AGE;
 import static com.arhs.tools.ai.domain.util.PersonUtil.MIN_AGE;
@@ -19,6 +19,7 @@ import static com.arhs.tools.ai.exception.DuplicatePropertyException.UniquePrope
 import static com.arhs.tools.ai.exception.DuplicatePropertyException.UniqueProperty.USERNAME;
 
 @Service
+@Transactional(readOnly = true)
 public class CivilRegistryServiceImpl implements CivilRegistryService {
 
     private final CivilRegistryRepository civilRegistryRepository;
@@ -45,8 +46,7 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
 
     @Override
     public List<Person> findAll() {
-        return StreamSupport.stream(civilRegistryRepository.findAll().spliterator(), false)
-                .collect(Collectors.toList());
+        return civilRegistryRepository.findByStatus(Person.Status.ACTIVE);
     }
 
     @Override
@@ -94,20 +94,24 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
     }
 
     @Override
+    @Transactional
     public Person create(final Person person) throws DuplicatePropertyException {
         if (findByUserName(person.getUserName()).isPresent())
             throw new DuplicatePropertyException(USERNAME);
         if (findByEmail(person.getEmail()).isPresent())
             throw new DuplicatePropertyException(EMAIL);
 
-        return civilRegistryRepository.save(person);
+        // Copy only business fields; IDs and lifecycle fields are server-owned.
+        return civilRegistryRepository.save(new Person(person));
     }
 
     @Override
+    @Transactional
     public Optional<Person> update(final Person person) throws DuplicatePropertyException {
         var foundPerson = find(person.getId());
         if (foundPerson.isEmpty())
             return Optional.empty();
+        requireActive(foundPerson.get());
 
         var foundPersonWithUserName = findByUserName(person.getUserName());
         if (foundPersonWithUserName.isPresent() && !foundPersonWithUserName.get().equals(foundPerson.get()))
@@ -126,17 +130,20 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
     }
 
     @Override
+    @Transactional
     public Optional<Person> delete(final int id) {
         var foundPerson = find(id);
         if (foundPerson.isEmpty()) {
             return Optional.empty();
         }
+        requireActive(foundPerson.get());
 
         civilRegistryRepository.delete(foundPerson.get());
         return foundPerson;
     }
 
     @Override
+    @Transactional
     public Optional<Person> deleteByUserName(final String userName) {
         var foundPerson = findByUserName(userName);
         if (foundPerson.isEmpty()) {
@@ -148,6 +155,7 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
     }
 
     @Override
+    @Transactional
     public Optional<Person> deleteByEmail(final String email) {
         var foundPerson = findByEmail(email);
         if (foundPerson.isEmpty()) {
@@ -159,9 +167,15 @@ public class CivilRegistryServiceImpl implements CivilRegistryService {
     }
 
     @Override
+    @Transactional
     public List<Person> deleteAll() {
         List<Person> persons = findAll();
-        civilRegistryRepository.deleteAll();
+        civilRegistryRepository.deleteAll(persons);
         return persons;
+    }
+
+    private void requireActive(Person person) {
+        if (person.getStatus() != Person.Status.ACTIVE)
+            throw new RegistryConflictException("Person has been merged", "person/" + person.getId());
     }
 }
