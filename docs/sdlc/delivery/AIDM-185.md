@@ -35,7 +35,7 @@ Add a pinned local Node/npm toolchain, Maven Wrapper, frontend unit tests, separ
 - [x] Wrapper clean verify and E2E verification succeeded; production frontend build and backend packaging guard passed.
 - [x] Independent source review recorded in docs/sdlc/reviews/AIDM-185.md.
 - [ ] Final committed-head GitHub Quality gate and Browser acceptance jobs pass.
-- [ ] Final staged content and publication reviewed for excluded generated files, secrets and private issue content.
+- [x] Staged paths reviewed: no build outputs, raw Jira snapshot or protected configuration files included; targeted credential-pattern check passed.
 
 Local results cover the feature working tree before its delivery commit, based on 9485d5b9e56d9c20efbafdf5f1533e0016145caa. Final-head CI must verify the published commit before merge.
 
@@ -55,7 +55,7 @@ Reviewer: independent Codex session aidm184_interactive_review. One Medium prere
 | Metric | Value |
 | --- | --- |
 | Intake | Confirmed 2026-10-13; refreshed 2026-10-16T15:02:17Z |
-| First implementation commit | Pending |
+| First implementation commit | d556d09628cefbbeb9d47848bdd944f0d43d4ef6 at 2026-10-16T15:05:45Z |
 | Pull request opened | Pending |
 | Merge completed | Pending human merge decision |
 | Latest local verification | 2026-10-16T14:54:38Z through 14:57:12Z |
