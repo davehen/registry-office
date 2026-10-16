@@ -1,8 +1,0 @@
-{
-  "name": "registry-office-ui-tests",
-  "private": true,
-  "packageManager": "pnpm@11.25.0",
-  "scripts": { "test": "playwright test" },
-  "devDependencies": { "playwright": "1.62.1" },
-  "engines": { "node": ">=22" }
-}

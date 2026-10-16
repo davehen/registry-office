@@ -32,15 +32,16 @@ class SdlcAutopilot
   RUNNER_FILES = [SCRIPT, 'dev_scripts/tests/sdlc-autopilot-test.rb'].freeze
   LOCAL_BRIDGE_FILES = %w[dev_scripts/jira-read-issue.sh dev_scripts/jira-sync-snapshot.rb].freeze
   PROTECTED = %r{\A(?:AGENTS\.md\z|\.git(?:/|\z)|\.agents(?:/|\z)|\.codex(?:/|\z)|dev_scripts/(?:sdlc-autopilot\.rb|tests/sdlc-autopilot-test\.rb|jira-read-issue\.sh|jira-sync-snapshot\.rb)\z)}
-  GENERATED = %r{(?:\A|/)(?:target|node_modules|test-results|playwright-report)(?:/|\z)}
+  GENERATED = %r{(?:\A|/)(?:target|node_modules|dist|coverage|test-results|playwright-report)(?:/|\z)}
 
   def initialize
     @issue = ARGV.first
+    @verify_checkout = ARGV.length == 2 && ARGV[1] == '--verify-checkout'
     @verify_only = ARGV.length == 4 && ARGV[3] == '--verify-only'
-    valid_arguments = @issue && @issue.match?(/\AAIDM-[0-9]+\z/) && (ARGV.length == 1 || ((ARGV.length == 3 || @verify_only) && ARGV[1] == '--resume'))
-    raise 'Usage: ruby dev_scripts/sdlc-autopilot.rb AIDM-NNN [--resume PRIVATE_RUN_DIRECTORY [--verify-only]]' unless valid_arguments
+    valid_arguments = @issue && @issue.match?(/\AAIDM-[0-9]+\z/) && (@verify_checkout || ARGV.length == 1 || ((ARGV.length == 3 || @verify_only) && ARGV[1] == '--resume'))
+    raise 'Usage: ruby dev_scripts/sdlc-autopilot.rb AIDM-NNN [--verify-checkout | --resume PRIVATE_RUN_DIRECTORY [--verify-only]]' unless valid_arguments
     @root = File.expand_path('..', __dir__)
-    @resume = ARGV.length >= 3
+    @resume = !@verify_checkout && ARGV.length >= 3
     if @resume
       @run = File.realpath(ARGV[2])
       stat = File.lstat(@run)
@@ -309,8 +310,14 @@ class SdlcAutopilot
     end
   end
 
+  def required_executables
+    tools = %w[git gh codex ruby bash java]
+    tools += %w[mvn node pnpm] unless File.file?(File.join(@root, 'backend/pom.xml'))
+    tools
+  end
+
   def preflight
-    %w[git gh codex ruby bash mvn java node pnpm].each do |name|
+    required_executables.each do |name|
       raise "Required executable not available: #{name}" unless ENV['PATH'].split(File::PATH_SEPARATOR).any? { |dir| File.executable?(File.join(dir, name)) }
     end
     raise 'Run this script from the main checkout.' unless git('branch', '--show-current') == 'main'
@@ -322,8 +329,10 @@ class SdlcAutopilot
     %w[--sandbox --json --ephemeral --output-schema --output-last-message].each do |flag|
       raise "Installed Codex CLI lacks #{flag}; update it before starting." unless help.include?(flag)
     end
-    version, = command('node', '--version', cwd: @root, timeout: 30)
-    raise 'Node 22+ is required by the browser tooling.' unless version[/\d+/].to_i >= 22
+    unless File.file?(File.join(@root, 'backend/pom.xml'))
+      version, = command('node', '--version', cwd: @root, timeout: 30)
+      raise 'Node 22+ is required by the browser tooling.' unless version[/\d+/].to_i >= 22
+    end
     git('var', 'GIT_AUTHOR_IDENT', cwd: @root)
     regression = File.join(@root, 'dev_scripts/tests/sdlc-autopilot-test.rb')
     command('ruby', regression, cwd: @root) if File.file?(regression)
@@ -456,6 +465,7 @@ class SdlcAutopilot
   end
 
   def local_tests
+    return modular_tests if File.file?(File.join(@work, 'backend/pom.xml')) && File.file?(File.join(@work, 'frontend/pom.xml'))
     phase('Maven and Playwright verification')
     commands = [
       ['mvn', '--batch-mode', '--no-transfer-progress', 'clean', 'verify'],
@@ -507,6 +517,50 @@ class SdlcAutopilot
     false
   ensure
     stop_owned_app(live_app) if live_app
+  end
+
+  def modular_tests
+    phase('Maven reactor, frontend units and separate-origin Playwright verification')
+    raise TestEvidenceError, 'Maven Wrapper missing; generate the approved wrapper in the terminal first.' unless File.file?(File.join(@work, 'mvnw'))
+    raise TestEvidenceError, 'Frontend npm lock missing; generate and review it before verification.' unless File.file?(File.join(@work, 'frontend/package-lock.json'))
+    before = git('status', '--porcelain=v1')
+    [['sh', './mvnw', '--batch-mode', '--no-transfer-progress', 'clean', 'verify'],
+     ['sh', './mvnw', '--batch-mode', '--no-transfer-progress', 'verify', '-Pe2e']].each do |args|
+      _, success = command(*args, allow_failure: true)
+      return false unless success
+    end
+    raise TestEvidenceError, 'Verification changed tracked/untracked delivery files.' unless git('status', '--porcelain=v1') == before
+    totals = Hash.new(0)
+    reports = Dir.glob(File.join(@work, 'backend/target/surefire-reports/TEST-*.xml'))
+    raise TestEvidenceError, 'Backend produced no test reports.' if reports.empty?
+    reports.each do |path|
+      root = REXML::Document.new(File.read(path)).root
+      raise TestEvidenceError, 'Invalid backend report.' unless root && root.name == 'testsuite' && root.attributes['tests']
+      %w[tests failures errors skipped].each { |key| totals[key] += root.attributes[key].to_i }
+    end
+    raise TestEvidenceError, 'Backend verification did not pass.' unless totals['tests'] > 0 && totals['failures'] == 0 && totals['errors'] == 0
+    units = JSON.parse(File.read(File.join(@work, 'frontend/target/vitest-results.json')))
+    raise TestEvidenceError, 'Frontend unit evidence did not pass.' unless units['success'] && units['numPassedTests'].to_i > 0 && units['numFailedTests'].to_i == 0
+    browser = JSON.parse(File.read(File.join(@work, 'frontend/target/playwright-results.json')))
+    stats = browser.fetch('stats')
+    raise TestEvidenceError, 'Browser evidence did not pass.' unless stats['expected'].to_i > 0 && stats['unexpected'].to_i == 0 && stats['flaky'].to_i == 0 && browser.fetch('errors', []).empty?
+    projects = []
+    walk = lambda do |suite|
+      suite.fetch('specs', []).each { |spec| spec.fetch('tests', []).each { |test| projects << test['projectName'] if test['status'] == 'expected' } }
+      suite.fetch('suites', []).each { |child| walk.call(child) }
+    end
+    browser.fetch('suites').each { |suite| walk.call(suite) }
+    raise TestEvidenceError, 'Mock and real browser coverage both required.' unless %w[mock real].all? { |project| projects.include?(project) }
+    @state['java_tests'], @state['frontend_unit_tests'], @state['browser_tests'] = totals, units['numPassedTests'], stats
+    @state['tested_commit'], @state['tested_worktree_status'] = git('rev-parse', 'HEAD'), before
+    @state['verification_scope'] = before.empty? ? 'clean commit' : 'working tree; commit and final-head CI still required'
+    save_state
+    true
+  rescue CommandTimeout, TestEvidenceError, Errno::ENOENT, JSON::ParserError, KeyError, REXML::ParseException => error
+    @state['verification_error'] = error.message
+    save_state
+    warn error.message
+    false
   end
 
   def independent_review
@@ -694,8 +748,8 @@ class SdlcAutopilot
     raise 'Repair budget exhausted; all artifacts retained. No unchecked merge performed.'
   end
 
-  def start_owned_app(cwd, label)
-    jar = File.join(cwd, 'target/registry-office-1.0.0.jar')
+  def start_owned_app(cwd, label, frontend_origin: nil)
+    jar = File.join(cwd, File.file?(File.join(cwd, 'backend/pom.xml')) ? 'backend/target/registry-office-backend-1.0.0.jar' : 'target/registry-office-1.0.0.jar')
     raise 'Expected application JAR absent.' unless File.file?(jar)
     port = (8080..8090).find do |candidate|
       begin
@@ -710,6 +764,7 @@ class SdlcAutopilot
     log = File.join(@run, "#{label}.log")
     output = File.open(log, 'w', 0600)
     arguments = ['java', '-jar', jar, "--server.port=#{port}", '--server.address=127.0.0.1']
+    arguments << "--app.cors.allowed-origins=#{frontend_origin}" if frontend_origin
     arguments << "--spring.datasource.url=jdbc:h2:mem:registry-ui-#{Process.pid}-#{port};DB_CLOSE_DELAY=-1" if label == 'browser-backend'
     pid = Process.spawn(*arguments, chdir: cwd, out: output, err: [:child, :out])
     output.close
@@ -765,6 +820,7 @@ class SdlcAutopilot
     git('pull', '--ff-only', cwd: @root)
     merge_sha = @state.dig('merged', 'mergeCommit', 'oid')
     git('merge-base', '--is-ancestor', merge_sha, 'HEAD', cwd: @root)
+    return launch_modular_main if File.file?(File.join(@root, 'backend/pom.xml'))
     command('mvn', '--batch-mode', '--no-transfer-progress', 'clean', 'verify', cwd: @root)
     app = start_owned_app(@root, 'application')
     pid = app['pid']
@@ -778,8 +834,68 @@ class SdlcAutopilot
     puts "Owned app PID: #{pid}; artifacts: #{@run}"
   end
 
+  def launch_modular_main
+    command('sh', './mvnw', '--batch-mode', '--no-transfer-progress', 'clean', 'verify', cwd: @root)
+    port = (5173..5183).find do |candidate|
+      begin
+        socket = TCPServer.new('127.0.0.1', candidate); socket.close; true
+      rescue Errno::EADDRINUSE
+        false
+      end
+    end
+    raise 'No free frontend preview port.' unless port
+    url = "http://127.0.0.1:#{port}"
+    backend = start_owned_app(@root, 'application', frontend_origin: url)
+    frontend = File.join(@root, 'frontend')
+    node = File.join(frontend, 'target/node/node')
+    vite = File.join(frontend, 'node_modules/vite/bin/vite.js')
+    command(node, vite, 'build', cwd: frontend, env: { 'VITE_API_BASE_URL' => backend['url'] })
+    output = File.open(File.join(@run, 'frontend.log'), 'w', 0600)
+    pid = Process.spawn(node, vite, 'preview', '--host', '127.0.0.1', '--port', port.to_s, '--strictPort',
+                        chdir: frontend, out: output, err: [:child, :out])
+    app = { 'pid' => pid, 'url' => url, 'log' => File.join(@run, 'frontend.log') }
+    @owned_apps[pid] = app
+    output.close
+    ready = false
+    60.times do
+      raise 'Frontend exited during startup.' if Process.waitpid(pid, Process::WNOHANG)
+      begin
+        http = Net::HTTP.new('127.0.0.1', port, nil)
+        http.open_timeout, http.read_timeout = 1, 2
+        ready = http.start { |client| client.get('/') }.code == '200'
+        break if ready
+      rescue SystemCallError, Timeout::Error, EOFError
+        # Only probe the owned preview server, never stop another application.
+      end
+      sleep 1
+    end
+    raise 'Frontend did not become ready; inspect frontend.log.' unless ready
+    @state['backend_url'], @state['backend_pid'] = backend['url'], backend['pid']
+    @state['app_url'], @state['app_pid'] = url, pid
+    save_state
+    [backend, app].each { |owned| Process.detach(owned['pid']); @owned_apps.delete(owned['pid']) }
+    phase('complete')
+    puts "PR merged: #{@state['pr_url']}"
+    puts "Frontend ready: #{url}; backend ready: #{backend['url']}"
+    puts "Owned PIDs: backend #{backend['pid']}, frontend #{pid}; artifacts: #{@run}"
+  rescue StandardError, Interrupt
+    (@owned_apps || {}).values.each { |owned| stop_owned_app(owned) }
+    raise
+  ensure
+    output.close if output && !output.closed?
+  end
+
   def run
     puts "#{@issue} per-issue autonomous PoC; artifacts: #{@run}"
+    if @verify_checkout
+      @work = @root
+      @branch = git('branch', '--show-current')
+      raise 'Use the dedicated issue branch for checkout verification.' unless @branch.start_with?("codex/#{@issue.downcase}-")
+      raise 'Verification failed; inspect saved logs.' unless local_tests
+      phase('checkout verification complete; independent review and delivery remain required')
+      puts 'Verification passed. No Jira access, model session, Git mutation, publication or merge performed.'
+      return
+    end
     preflight
     if @verify_only
       @work = File.join(@run, 'worktree')

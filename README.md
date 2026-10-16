@@ -1,40 +1,76 @@
-The Registry Office application is a simple civil registry system that allows managing individuals ("Persons") in a centralized repository.
+# Registry Office
 
-The system supports:
-- Registration of new individuals
-- Retrieval of individual or multiple records
-- Update of existing records
-- Deletion of records
-- Search across multiple attributes
+Registry Office manages persons, nationality search, duplicate detection and controlled merge. Data is stored in an in-memory H2 database and is lost when the backend restarts. Authentication, persistent deployment and production infrastructure remain outside this demo's scope.
 
-The data is stored in-memory and is not persisted across application restarts.
+## Architecture and prerequisites
 
-# Get started
+- `backend/`: Java 17, Spring Boot 3.3.4 REST and OpenAPI, with no application frontend assets.
+- `frontend/`: framework-free ES modules, Vite, Vitest/jsdom and Playwright.
+- Root `pom.xml`: Maven aggregator, backend first and frontend second. The modules produce separate artifacts.
 
-To run the application locally, the following tools shall be installed in the local machine:
-  * [Java Runtime Environment](https://www.oracle.com/java/technologies/downloads/) v.21 (or later)
-  * [Apache Maven](https://maven.apache.org/) v.3.8 (or later).
+Use Java 17 or newer. Maven Wrapper selects Maven 3.9.9; the reactor installs Node 22.16.0/npm 11.19.1 locally for frontend verification. Backend-only builds need no Node installation. Standalone frontend development needs compatible Node/npm. npm 10 is not supported for regenerating this dependency lock: its peer-dependency resolver can crash with `Cannot read properties of null (reading 'edgesOut')`.
 
-## 1. Clone repository
+## Verification commands
+
 ```bash
-git clone https://gitlab.arhs-developments.com/ARHS/Training/code-assistant-use-cases/registry-office.git 
-
-cd registry-office
+./mvnw -pl backend clean verify
+./mvnw -pl frontend clean verify
+./mvnw clean verify
+./mvnw clean verify -Pe2e
 ```
 
-## 2. Build the application
-```bash
-mvn clean install
-```
-Also, all tests will be executed locally.
+Normal verification runs backend tests and the REST-only packaging guard, installs frontend dependencies using npm ci, runs frontend unit tests and builds frontend/dist. Only the e2e profile starts browser servers. See [testing strategy](docs/testing-strategy.md).
 
-## 3. Run the application
-```bash
-java -jar target/registry-office-?.?.?.jar
-```
-The application will start on port `8080`: send a sample request to `http://localhost:8080` to see if you're up and running.
+For the interactive SDLC pilot, the same orchestration script can verify the current dedicated issue branch without starting Codex sessions or accessing Jira/GitHub:
 
----
+```bash
+ruby dev_scripts/sdlc-autopilot.rb AIDM-185 --verify-checkout
+```
+
+This command runs normal verification followed by the E2E profile and saves actual reports outside Git. Dirty-worktree results are explicitly distinguished from clean-commit evidence; publication still needs independent review and final-head CI.
+
+## Develop independently
+
+Terminal 1, at repository root:
+
+```bash
+REGISTRY_ALLOWED_ORIGINS=http://127.0.0.1:5173 ./mvnw -pl backend spring-boot:run
+```
+
+Terminal 2:
+
+```bash
+cd frontend
+npm ci --ignore-scripts
+VITE_API_BASE_URL=http://localhost:8080 npm run dev
+```
+
+Open http://127.0.0.1:5173. The browser and backend are separate origins. Backend root / intentionally returns 404; OpenAPI remains at /v3/api-docs and Swagger at /swagger-ui/index.html. The JavaScript API client reads VITE_API_BASE_URL for every API, including duplicate management.
+
+Use npm test, npm run test:watch, npm run build, npm run preview and npm run test:e2e under frontend. Build the backend before standalone E2E; the root e2e profile does this automatically.
+
+## Configure and deploy independent artifacts
+
+```bash
+# Public frontend build-time configuration, not a secret.
+cd frontend
+VITE_API_BASE_URL=https://api.example.test npm run build
+npm run preview
+```
+
+The example origin must be replaced by your environment's backend URL. An explicitly empty API base supports a same-origin reverse proxy; do not leave it empty for separate-origin deployment. Configuration is read from process environment variables; dotenv files are not loaded.
+
+Serve frontend/dist from a static web server/CDN. Run backend/target/registry-office-backend-1.0.0.jar as a separate Java process. Never copy frontend output into the JAR.
+
+```bash
+java -jar backend/target/registry-office-backend-1.0.0.jar \
+  --app.cors.allowed-origins=https://ui.example.test,https://second-ui.example.test
+```
+
+CORS accepts comma-separated exact configured origins, required REST methods and Content-Type, exposes Location and disallows credentials and wildcard origins. Development defaults permit http://localhost:5173; production deployments must override them. Changing the API URL requires rebuilding the frontend, not the backend.
+
+See [architecture](docs/architecture.md) and [AIDM-185 delivery plan](docs/sdlc/work-items/AIDM-185.md).
+
 ---
 
 # REST APIs

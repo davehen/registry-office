@@ -20,6 +20,52 @@ class AutopilotRegressionTest < Minitest::Test
     Dir.mktmpdir('autopilot-regression-', '/private/tmp')
   end
 
+  def modular_runner(projects = %w[mock real])
+    instance = runner
+    directory = fixture_directory
+    %w[backend/target/surefire-reports frontend/target].each { |path| FileUtils.mkdir_p(File.join(directory, path)) }
+    %w[backend/pom.xml frontend/pom.xml mvnw frontend/package-lock.json].each { |path| File.write(File.join(directory, path), 'fixture') }
+    File.write(File.join(directory, 'backend/target/surefire-reports/TEST-example.xml'), '<testsuite tests="2" failures="0" errors="0" skipped="0"/>')
+    File.write(File.join(directory, 'frontend/target/vitest-results.json'), JSON.generate('success' => true, 'numPassedTests' => 3, 'numFailedTests' => 0))
+    File.write(File.join(directory, 'frontend/target/playwright-results.json'), JSON.generate(
+      'stats' => { 'expected' => projects.length, 'unexpected' => 0, 'flaky' => 0 }, 'errors' => [],
+      'suites' => [{ 'suites' => [{ 'specs' => [{ 'tests' => projects.map { |project| { 'projectName' => project, 'status' => 'expected' } } }] }] }]))
+    instance.instance_variable_set(:@root, directory)
+    instance.instance_variable_set(:@work, directory)
+    instance.define_singleton_method(:git) { |*args, **| args.first == 'status' ? '' : 'tested-sha' }
+    instance.define_singleton_method(:command) { |*args, **| ['mocked only', true] }
+    instance
+  end
+
+  def test_modular_verification_requires_wrapper_and_both_browser_projects
+    instance = modular_runner
+    assert instance.local_tests
+    assert_equal 2, instance.instance_variable_get(:@state).dig('java_tests', 'tests')
+    assert_equal 3, instance.instance_variable_get(:@state)['frontend_unit_tests']
+    assert_equal 'tested-sha', instance.instance_variable_get(:@state)['tested_commit']
+    missing_real = modular_runner(%w[mock])
+    capture_io { refute missing_real.local_tests }
+    assert_includes missing_real.instance_variable_get(:@state)['verification_error'], 'Mock and real'
+  end
+
+  def test_modular_preflight_does_not_require_global_maven_node_or_pnpm
+    instance = modular_runner
+    %w[mvn node pnpm].each { |tool| refute_includes instance.required_executables, tool }
+    %w[git gh codex ruby bash java].each { |tool| assert_includes instance.required_executables, tool }
+  end
+
+  def test_checkout_verification_does_not_start_models_or_external_delivery
+    instance = runner
+    instance.instance_variable_set(:@verify_checkout, true)
+    instance.instance_variable_set(:@run, fixture_directory)
+    instance.define_singleton_method(:git) { |*| 'codex/aidm-999-example' }
+    instance.define_singleton_method(:local_tests) { true }
+    %i[preflight agent publish_and_merge launch_main].each do |method|
+      instance.define_singleton_method(method) { |*| raise 'Unexpected model/auth/delivery action' }
+    end
+    capture_io { instance.run }
+  end
+
   def test_normal_feature_paths_are_not_arbitrarily_blocked
     instance = runner
     %w[src/new/file.java docs/duplicate-management.md docs/new-feature.md dev_scripts/new-helper.rb tests/example.test.js].each do |path|

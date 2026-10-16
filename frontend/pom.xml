@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>com.arhs.tools.ai</groupId><artifactId>registry-office</artifactId><version>1.0.0</version></parent>
+  <artifactId>registry-office-frontend</artifactId><packaging>pom</packaging>
+  <build><plugins><plugin>
+    <groupId>com.github.eirslett</groupId><artifactId>frontend-maven-plugin</artifactId><version>${frontend-maven-plugin.version}</version>
+    <configuration><workingDirectory>${project.basedir}</workingDirectory><installDirectory>${project.build.directory}</installDirectory><nodeVersion>${node.version}</nodeVersion><npmVersion>${npm.version}</npmVersion></configuration>
+    <executions>
+      <execution><id>install-node-npm</id><phase>generate-resources</phase><goals><goal>install-node-and-npm</goal></goals><configuration><nodeVersion>${node.version}</nodeVersion><npmVersion>${npm.version}</npmVersion></configuration></execution>
+      <execution><id>npm-ci</id><phase>generate-resources</phase><goals><goal>npm</goal></goals><configuration><arguments>ci --ignore-scripts</arguments></configuration></execution>
+      <execution><id>unit-tests</id><phase>test</phase><goals><goal>npm</goal></goals><configuration><arguments>run test</arguments></configuration></execution>
+      <execution><id>production-build</id><phase>prepare-package</phase><goals><goal>npm</goal></goals><configuration><arguments>run build</arguments></configuration></execution>
+    </executions>
+  </plugin></plugins></build>
+  <profiles><profile><id>e2e</id><build><plugins><plugin>
+    <groupId>com.github.eirslett</groupId><artifactId>frontend-maven-plugin</artifactId>
+    <executions>
+      <execution><id>install-browser</id><phase>integration-test</phase><goals><goal>npm</goal></goals><configuration><arguments>exec playwright install chromium</arguments></configuration></execution>
+      <execution><id>browser-e2e</id><phase>verify</phase><goals><goal>npm</goal></goals><configuration><arguments>run test:e2e</arguments></configuration></execution>
+    </executions>
+  </plugin></plugins></build></profile></profiles>
+</project>
